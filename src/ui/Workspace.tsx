@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { playerBattles, toRow, type Analysis, type PlayerRow, type PlayerSums, type StoredBattle } from '../analysis/analyze'
+import { focusPlayer, mvp, playerBattles, toRow, type Analysis, type PlayerRow, type PlayerSums, type StoredBattle } from '../analysis/analyze'
 import { encodeReport, type Mode } from '../analysis/share'
 import { tankInfo } from '../data/lookup'
 import type { T } from '../i18n'
@@ -47,17 +47,12 @@ function buildSummary(a: Analysis, mode: Mode, t: T): string[] {
     lines.push(diff >= 0 ? t('sumEdge', { v: fixed(diff) }) : t('sumGap', { v: fixed(-diff) }))
     const dmg = a.ourAvgAdr - a.enemyAvgAdr
     lines.push(dmg >= 0 ? t('sumDmgAhead', { v: int(dmg) }) : t('sumDmgBehind', { v: int(-dmg) }))
-    const mvp = a.our[0]
-    if (mvp) lines.push(t('sumMvp', { nick: mvp.nick, bpr: fixed(mvp.bpr), adr: int(mvp.adr), tank: mvp.mainTank }))
+    const best = mvp(a)
+    if (best) lines.push(t('sumMvp', { nick: best.nick, bpr: fixed(best.bpr), adr: int(best.adr), tank: best.mainTank }))
     lines.push(diff >= 0 ? t('sumFocusStructure') : t('sumFocusFire'))
   }
   if (total) lines.push(t('sumRecord', { w: a.record.win, l: a.record.loss, d: a.record.draw, wr: pct(a.record.win / total) }))
   return lines
-}
-
-/** The player with the most battles on our side — the replay author in a personal session. */
-function focusPlayer(a: Analysis): PlayerRow | undefined {
-  return [...a.our].sort((x, y) => y.battles - x.battles || y.bpr - x.bpr)[0]
 }
 
 export function Workspace({ analysis: a, mode, title, t, local }: Props) {
@@ -69,6 +64,7 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
   const enemyT = useMemo(() => teamTotals(a.enemy), [a.enemy])
   const all = useMemo(() => [...a.our, ...a.enemy].sort((x, y) => y.bpr - x.bpr), [a])
   const focus = focusPlayer(a)
+  const best = mvp(a)
   const opts = { roster: local?.roster ?? [] }
   const modalBattles = open && local ? playerBattles(local.battles, open.id, open.side, opts) : null
   const focusBattles = mode === 'individual' && focus && local ? playerBattles(local.battles, focus.id, 'our', opts) : null
@@ -133,7 +129,7 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
         <Stat label={t('statOurBpr')} value={<Bpr value={a.ourAvgBpr} />} />
         <Stat label={t('statEnemyBpr')} value={<Bpr value={a.enemyAvgBpr} />} />
         <Stat label={t('statAdr')} value={<><span className="our-text">{int(ourT.adr)}</span><span className="muted"> : </span><span className="enemy-text">{int(enemyT.adr)}</span></>} />
-        {a.our[0] && <Stat label={t('statMvp')} value={a.our[0].nick} sub={`BPR ${fixed(a.our[0].bpr)}`} onClick={() => setOpen(a.our[0])} />}
+        {best && <Stat label={t('statMvp')} value={best.nick} sub={`BPR ${fixed(best.bpr)}`} onClick={() => setOpen(best)} />}
         {!!local?.errors.length && <Stat label={t('statErrors')} value={String(local.errors.length)} tone="bad" onClick={() => setTab('battles')} />}
       </div>
 

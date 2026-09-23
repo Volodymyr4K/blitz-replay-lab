@@ -69,7 +69,7 @@ export interface BattleSummary {
   roomType: number
   outcome: Outcome
   ourTeam: number
-  sideVia: 'roster' | 'author'
+  sideVia: SideVia
   authorId: number
   authorNick: string
   ourDamage: number
@@ -79,6 +79,8 @@ export interface BattleSummary {
 }
 
 export interface Analysis {
+  /** Our-side player the session is about (the anchor), if known. */
+  focusId: number | null
   our: PlayerRow[]
   enemy: PlayerRow[]
   battles: BattleSummary[]
@@ -102,20 +104,73 @@ function inRoster(roster: Set<string>, nick: string, clan: string | null): boole
   return roster.has(nick.toLowerCase()) || (!!clan && roster.has(`[${clan.toLowerCase()}]`))
 }
 
-export function resolveOurTeam(b: ParsedReplay, roster: Set<string>): { team: number; via: 'roster' | 'author' } {
-  if (roster.size) {
-    // Only players who actually fought count — training rooms also list benched players and spectators.
-    const played = new Set(b.results.map((r) => r.accountId))
-    const counts = new Map<number, number>()
-    for (const p of b.players) {
-      if (played.has(p.accountId) && inRoster(roster, p.nickname, p.clanTag)) counts.set(p.team, (counts.get(p.team) ?? 0) + 1)
-    }
-    const ranked = [...counts].sort((a, z) => z[1] - a[1])
-    if (ranked.length && (ranked.length === 1 || ranked[0][1] > ranked[1][1])) {
-      return { team: ranked[0][0], via: 'roster' }
-    }
+export type SideVia = 'roster' | 'anchor' | 'author'
+
+export interface SideAssignment {
+  /** Account that anchors "our" side: whoever recorded the most replays. */
+  anchorId: number | null
+  sides: Map<string, { team: number; via: SideVia }>
+}
+
+function rosterTeam(b: ParsedReplay, played: Set<number>, roster: Set<string>): number | null {
+  // Only players who actually fought count — training rooms also list benched players and spectators.
+  const counts = new Map<number, number>()
+  for (const p of b.players) {
+    if (played.has(p.accountId) && inRoster(roster, p.nickname, p.clanTag)) counts.set(p.team, (counts.get(p.team) ?? 0) + 1)
   }
-  return { team: b.authorTeam, via: 'author' }
+  const ranked = [...counts].sort((a, z) => z[1] - a[1])
+  return ranked.length && (ranked.length === 1 || ranked[0][1] > ranked[1][1]) ? ranked[0][0] : null
+}
+
+/**
+ * Decide which team is "ours" in every battle, consistently across the session.
+ *
+ * Replays of one scrim often come from several people — including the enemy — and a
+ * battle is kept once whoever uploaded it, so "the author's team" alone flips sides.
+ * Priority: roster → the anchor player's team → the team with more of the anchor's
+ * usual teammates → the author's team.
+ */
+export function assignSides(battles: ParsedReplay[], opts: AnalyzeOptions): SideAssignment {
+  const roster = new Set(normalizeRoster(opts.roster))
+  const authors = new Map<number, number>()
+  for (const b of battles) authors.set(b.authorId, (authors.get(b.authorId) ?? 0) + 1)
+  const anchorId = [...authors].sort((a, z) => z[1] - a[1])[0]?.[0] ?? null
+
+  const teamOf = (b: ParsedReplay, id: number | null) => b.players.find((p) => p.accountId === id)?.team
+  const playedIn = (b: ParsedReplay) => new Set(b.results.map((r) => r.accountId))
+
+  // How often each player fought alongside the anchor.
+  const mates = new Map<number, number>()
+  for (const b of battles) {
+    const played = playedIn(b)
+    const team = anchorId !== null && played.has(anchorId) ? teamOf(b, anchorId) : undefined
+    if (team === undefined) continue
+    for (const p of b.players) if (p.team === team && p.accountId !== anchorId && played.has(p.accountId)) mates.set(p.accountId, (mates.get(p.accountId) ?? 0) + 1)
+  }
+
+  const sides = new Map<string, { team: number; via: SideVia }>()
+  for (const b of battles) {
+    const played = playedIn(b)
+    const viaRoster = roster.size ? rosterTeam(b, played, roster) : null
+    if (viaRoster !== null) {
+      sides.set(b.arenaId, { team: viaRoster, via: 'roster' })
+      continue
+    }
+    const anchorTeam = anchorId !== null && played.has(anchorId) ? teamOf(b, anchorId) : undefined
+    if (anchorTeam !== undefined) {
+      sides.set(b.arenaId, { team: anchorTeam, via: anchorTeam === b.authorTeam ? 'author' : 'anchor' })
+      continue
+    }
+    const score = new Map<number, number>()
+    for (const p of b.players) if (played.has(p.accountId)) score.set(p.team, (score.get(p.team) ?? 0) + (mates.get(p.accountId) ?? 0))
+    const ranked = [...score].sort((a, z) => z[1] - a[1])
+    if (ranked.length && ranked[0][1] > 0 && (ranked.length === 1 || ranked[0][1] > ranked[1][1])) {
+      sides.set(b.arenaId, { team: ranked[0][0], via: ranked[0][0] === b.authorTeam ? 'author' : 'anchor' })
+      continue
+    }
+    sides.set(b.arenaId, { team: b.authorTeam, via: 'author' })
+  }
+  return { anchorId, sides }
 }
 
 function emptySums(id: number, nick: string, clan: string | null, side: Side): PlayerSums {
@@ -215,15 +270,27 @@ export function toRow(s: PlayerSums): PlayerRow {
 
 export const byBpr = (a: PlayerRow, b: PlayerRow) => b.bpr - a.bpr || b.adr - a.adr
 
+/** Best BPR among our regulars — someone who subbed in for one lucky battle is not the MVP. */
+export function mvp(a: Analysis): PlayerRow | undefined {
+  const most = Math.max(0, ...a.our.map((r) => r.battles))
+  return a.our.find((r) => r.battles * 2 >= most)
+}
+
+/** The player a personal session is about: the anchor, else our most frequent player. */
+export function focusPlayer(a: Analysis): PlayerRow | undefined {
+  return a.our.find((r) => r.id === a.focusId) ?? [...a.our].sort((x, y) => y.battles - x.battles || y.bpr - x.bpr)[0]
+}
+
 function weightedMean(rows: PlayerRow[], pick: (r: PlayerRow) => number): number {
   const total = rows.reduce((acc, r) => acc + r.battles, 0)
   return total ? rows.reduce((acc, r) => acc + pick(r) * r.battles, 0) / total : 0
 }
 
-export function summarizeRows(our: PlayerRow[], enemy: PlayerRow[], battles: BattleSummary[]): Analysis {
+export function summarizeRows(our: PlayerRow[], enemy: PlayerRow[], battles: BattleSummary[], focusId: number | null = null): Analysis {
   const record = { win: 0, loss: 0, draw: 0 }
   for (const b of battles) record[b.outcome]++
   return {
+    focusId,
     our: [...our].sort(byBpr),
     enemy: [...enemy].sort(byBpr),
     battles,
@@ -241,12 +308,12 @@ export function outcomeFor(winnerTeam: number | null, team: number): Outcome {
 }
 
 export function analyze(battles: StoredBattle[], opts: AnalyzeOptions): Analysis {
-  const roster = new Set(normalizeRoster(opts.roster))
+  const { anchorId, sides } = assignSides(battles, opts)
   const sums = new Map<string, PlayerSums>()
   const summaries: BattleSummary[] = []
 
   for (const b of battles) {
-    const { team: ourTeam, via } = resolveOurTeam(b, roster)
+    const { team: ourTeam, via } = sides.get(b.arenaId)!
     const info = new Map(b.players.map((p) => [p.accountId, p]))
     let ourDamage = 0
     let enemyDamage = 0
@@ -298,6 +365,7 @@ export function analyze(battles: StoredBattle[], opts: AnalyzeOptions): Analysis
     rows.filter((r) => r.side === 'our'),
     rows.filter((r) => r.side === 'enemy'),
     summaries,
+    anchorId,
   )
 }
 
@@ -313,13 +381,13 @@ export interface PlayerBattle {
 
 /** Per-battle breakdown for one player (needs raw battles, so not available in shared reports). */
 export function playerBattles(battles: StoredBattle[], accountId: number, side: Side, opts: AnalyzeOptions): PlayerBattle[] {
-  const roster = new Set(normalizeRoster(opts.roster))
+  const { sides } = assignSides(battles, opts)
   const out: PlayerBattle[] = []
   for (const b of battles) {
     const p = b.players.find((x) => x.accountId === accountId)
     const r = b.results.find((x) => x.accountId === accountId)
     if (!p || !r) continue
-    const { team } = resolveOurTeam(b, roster)
+    const { team } = sides.get(b.arenaId)!
     if ((p.team === team ? 'our' : 'enemy') !== side) continue
     const s = emptySums(accountId, p.nickname, p.clanTag, side)
     addResult(s, r, b.winnerTeam === p.team)

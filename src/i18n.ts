@@ -132,6 +132,7 @@ const en = {
   loss: 'Loss',
   draw: 'Draw',
   viaRoster: 'side from roster',
+  viaAnchor: 'recorded by the other team — sides matched to the rest of the session',
 
   rosterTitle: 'Your roster',
   rosterText:
@@ -334,6 +335,7 @@ const uk: Dict = {
   loss: 'Поразка',
   draw: 'Нічия',
   viaRoster: 'сторона за складом',
+  viaAnchor: 'реплей записано з іншої сторони — сторони узгоджено з рештою сесії',
 
   rosterTitle: 'Склад вашої команди',
   rosterText:

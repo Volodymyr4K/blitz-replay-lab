@@ -54,6 +54,8 @@ interface Packed {
   c: number
   m: Mode
   t: string
+  /** Focus (anchor) account ID; absent in links made before it existed. */
+  f?: number
   p: PackedPlayer[]
   b: PackedBattle[]
 }
@@ -134,6 +136,7 @@ export function encodeReport(analysis: Analysis, mode: Mode, title: string): str
     c: Math.floor(Date.now() / 1000),
     m: mode,
     t: title.slice(0, 80),
+    ...(analysis.focusId !== null && { f: analysis.focusId }),
     p: [...analysis.our, ...analysis.enemy].map(packPlayer),
     b: analysis.battles
       .slice(-MAX_BATTLES)
@@ -179,6 +182,7 @@ export function decodeReport(payload: string): SharedReport {
       rows.filter((r) => r.side === 'our'),
       rows.filter((r) => r.side === 'enemy'),
       battles,
+      typeof packed.f === 'number' ? packed.f : null,
     ),
     mode: packed.m === 'individual' ? 'individual' : 'scrim',
     createdAt: packed.c * 1000,

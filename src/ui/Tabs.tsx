@@ -64,7 +64,11 @@ export function BattlesTab({ battles, errors, t, editable }: { battles: BattleSu
                 {editable && (
                   <td className="left">
                     {b.authorNick}
-                    {b.sideVia === 'roster' && <span className="hint-chip" title={t('viaRoster')}>⇄</span>}
+                    {b.sideVia !== 'author' && (
+                      <span className="hint-chip" title={t(b.sideVia === 'roster' ? 'viaRoster' : 'viaAnchor')}>
+                        ⇄
+                      </span>
+                    )}
                   </td>
                 )}
                 {editable && (
