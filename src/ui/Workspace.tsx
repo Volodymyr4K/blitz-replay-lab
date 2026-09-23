@@ -6,10 +6,11 @@ import type { T } from '../i18n'
 import { exportExcel } from '../lib/excel'
 import { fixed, int, pct } from '../lib/format'
 import { toast } from '../lib/toast'
-import { clearSession, updateSession, type FileError } from '../store'
+import { clearSession, restoreSession, updateSession, type FileError } from '../store'
 import { Bpr, Clan, Panel } from './bits'
 import { BprTrend, ClassMix, CompareRow, TopPlayers } from './charts'
 import { Dropzone } from './Dropzone'
+import { Modal } from './Modal'
 import { PlayerModal } from './PlayerModal'
 import { BattlesTab, RosterTab } from './Tabs'
 import { TeamTable } from './TeamTable'
@@ -83,6 +84,7 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
 
   return (
     <div className="workspace">
+      {local && <h1 className="sr-only">{title || t('workspaceHeading')}</h1>}
       {local && (
         <div className="toolbar">
           <input className="input title-input" aria-label={t('sessionTitle')} placeholder={t('sessionTitlePh')} value={title} onChange={(e) => updateSession({ title: e.target.value })} />
@@ -106,7 +108,13 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
             >
               {t('exportXlsx')}
             </button>
-            <button className="btn ghost" onClick={() => confirm(t('confirmClear')) && clearSession()}>
+            <button
+              className="btn ghost"
+              onClick={() => {
+                const previous = clearSession()
+                toast(t('clearedSession'), 'info', { label: t('undo'), run: () => restoreSession(previous) })
+              }}
+            >
               {t('newAnalysis')}
             </button>
           </div>
@@ -141,9 +149,9 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
               <div className="focus-head" onClick={() => setOpen(focus)}>
                 <Bpr value={focus.bpr} size="lg" />
                 <div>
-                  <h2>
+                  <h3>
                     {focus.nick} <Clan tag={focus.clan} />
-                  </h2>
+                  </h3>
                   <p className="muted">
                     {t('colBattles')}: {focus.battles} · {t('colWr')} {pct(focus.winRate)} · {focus.mainTank}
                   </p>
@@ -248,38 +256,36 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
 
 function ShareDialog({ url, omitted, t, onClose }: { url: string; omitted: Analysis['omitted']; t: T; onClose: () => void }) {
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal share-dialog" role="dialog" aria-modal="true" aria-label={t('share')} onClick={(e) => e.stopPropagation()}>
-        <header className="modal-head">
-          <div>
-            <h2>{t('shareTitle')}</h2>
-            <p className="muted">{t('shareText')}</p>
-          </div>
-          <button className="icon-btn" onClick={onClose} aria-label={t('close')}>
-            ✕
+    <Modal label={t('shareTitle')} onClose={onClose} className="share-dialog">
+      <header className="modal-head">
+        <div>
+          <h2>{t('shareTitle')}</h2>
+          <p className="muted">{t('shareText')}</p>
+        </div>
+        <button className="icon-btn" onClick={onClose} aria-label={t('close')}>
+          ✕
+        </button>
+      </header>
+      <div className="modal-body">
+        <textarea className="input share-url" readOnly rows={3} value={url} onFocus={(e) => e.currentTarget.select()} />
+        <TrimNotes omitted={omitted} t={t} />
+        {url.length > 2000 && <p className="muted small">{t('shareTooLong', { n: url.length })}</p>}
+        <div className="row-actions">
+          <button
+            className="btn primary"
+            onClick={async () => {
+              await navigator.clipboard.writeText(url)
+              toast(t('shareCopied'))
+            }}
+          >
+            {t('copy')}
           </button>
-        </header>
-        <div className="modal-body">
-          <textarea className="input share-url" readOnly rows={3} value={url} onFocus={(e) => e.currentTarget.select()} />
-          <TrimNotes omitted={omitted} t={t} />
-          {url.length > 2000 && <p className="muted small">{t('shareTooLong', { n: url.length })}</p>}
-          <div className="row-actions">
-            <button
-              className="btn primary"
-              onClick={async () => {
-                await navigator.clipboard.writeText(url)
-                toast(t('shareCopied'))
-              }}
-            >
-              {t('copy')}
-            </button>
-            <a className="btn" href={url} target="_blank" rel="noreferrer">
-              {t('shareOpen')}
-            </a>
-          </div>
+          <a className="btn" href={url} target="_blank" rel="noreferrer">
+            {t('shareOpen')}
+          </a>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -303,17 +309,22 @@ function Stat({ label, value, sub, tone, onClick }: { label: string; value: Reac
   )
 }
 
+const COLUMN_PREVIEW = 10
+
 function TeamColumn({ rows, side, title, avg, t, onOpen }: { rows: PlayerRow[]; side: 'our' | 'enemy'; title: string; avg: number; t: T; onOpen: (r: PlayerRow) => void }) {
+  // Randoms sessions can have hundreds of players; the overview shows the top and the table has the rest.
+  const [all, setAll] = useState(false)
+  const shown = all ? rows : rows.slice(0, COLUMN_PREVIEW)
   return (
     <section className={`team-col ${side}`}>
       <header>
-        <h3>{title}</h3>
+        <h2>{title}</h2>
         <span className="muted">
           {t('avgBpr')} <b>{fixed(avg)}</b>
         </span>
       </header>
       <ol>
-        {rows.map((r, i) => (
+        {shown.map((r, i) => (
           <li key={r.key}>
             <button onClick={() => onOpen(r)}>
               <span className={`rank r${i + 1}`}>{i + 1}</span>
@@ -332,6 +343,11 @@ function TeamColumn({ rows, side, title, avg, t, onOpen }: { rows: PlayerRow[]; 
           </li>
         ))}
       </ol>
+      {rows.length > COLUMN_PREVIEW && (
+        <button className="btn ghost sm show-all" onClick={() => setAll((v) => !v)} aria-expanded={all}>
+          {all ? t('showLess') : t('showAll', { n: rows.length })}
+        </button>
+      )}
     </section>
   )
 }

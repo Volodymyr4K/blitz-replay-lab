@@ -30,7 +30,7 @@ export function Panel({ title, action, children, className = '' }: { title?: Rea
     <section className={`panel ${className}`}>
       {(title || action) && (
         <header className="panel-head">
-          {title && <h3>{title}</h3>}
+          {title && <h2>{title}</h2>}
           {action}
         </header>
       )}

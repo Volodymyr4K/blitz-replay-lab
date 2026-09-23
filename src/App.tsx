@@ -5,10 +5,11 @@ import { decodeReport, type SharedReport } from './analysis/share'
 import { setLang, useLang, useT, type Lang, type T } from './i18n'
 import { date } from './lib/format'
 import { errorText } from './lib/labels'
-import { useToasts } from './lib/toast'
+import { dismissToast, useToasts } from './lib/toast'
 import { useStore } from './store'
 import { Panel } from './ui/bits'
 import { Dropzone } from './ui/Dropzone'
+import { ErrorBoundary } from './ui/ErrorBoundary'
 import { TrimNotes, Workspace } from './ui/Workspace'
 
 const APP_NAME = 'Blitz Replay Lab'
@@ -41,7 +42,8 @@ export default function App() {
   const t = useT()
   const lang = useLang()
   const route = useRoute()
-  const { progress, storageFull } = useStore()
+  const { progress, storageFull, session } = useStore()
+  useDocumentTitle(route, session.title, t)
 
   return (
     <div className="app">
@@ -76,10 +78,13 @@ export default function App() {
       {storageFull && <div className="banner warn">{t('storageFull')}</div>}
 
       <main className="main">
-        {route.page === 'home' && <Home t={t} />}
-        {route.page === 'shared' && <Shared payload={route.payload} t={t} />}
-        {route.page === 'guide' && <Guide t={t} />}
-        {route.page === 'privacy' && <Privacy t={t} />}
+        {/* Keyed by page so navigating away from a crashed view recovers. */}
+        <ErrorBoundary key={route.page}>
+          {route.page === 'home' && <Home t={t} />}
+          {route.page === 'shared' && <Shared payload={route.payload} t={t} />}
+          {route.page === 'guide' && <Guide t={t} />}
+          {route.page === 'privacy' && <Privacy t={t} />}
+        </ErrorBoundary>
       </main>
 
       <footer className="footer">
@@ -104,6 +109,23 @@ export default function App() {
       <Toasts />
     </div>
   )
+}
+
+function useDocumentTitle(route: Route, sessionTitle: string, t: T) {
+  useEffect(() => {
+    let page = ''
+    if (route.page === 'home') page = sessionTitle
+    else if (route.page === 'guide') page = t('navGuide')
+    else if (route.page === 'privacy') page = t('navPrivacy')
+    else {
+      try {
+        page = decodeReport(route.payload).title || t('sharedBanner')
+      } catch {
+        page = t('sharedBanner')
+      }
+    }
+    document.title = page ? `${page} · ${APP_NAME}` : APP_NAME
+  }, [route, sessionTitle, t])
 }
 
 function Home({ t }: { t: T }) {
@@ -155,7 +177,7 @@ function Landing({ t }: { t: T }) {
           ] as const
         ).map(([h, p]) => (
           <div className="feature" key={h}>
-            <h3>{t(h)}</h3>
+            <h2>{t(h)}</h2>
             <p className="muted">{t(p)}</p>
           </div>
         ))}
@@ -259,7 +281,18 @@ function Toasts() {
     <div className="toasts" aria-live="polite">
       {toasts.map((x) => (
         <div key={x.id} className={`toast ${x.kind}`}>
-          {x.text}
+          <span>{x.text}</span>
+          {x.action && (
+            <button
+              className="toast-action"
+              onClick={() => {
+                x.action!.run()
+                dismissToast(x.id)
+              }}
+            >
+              {x.action.label}
+            </button>
+          )}
         </div>
       ))}
     </div>

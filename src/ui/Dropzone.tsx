@@ -48,14 +48,6 @@ export function Dropzone({ compact = false }: { compact?: boolean }) {
         if ((e.target as HTMLElement).closest('button')) return
         files.current?.click()
       }}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          files.current?.click()
-        }
-      }}
     >
       <input ref={files} type="file" accept=".wotbreplay" multiple hidden onChange={() => pick(files.current)} />
       <input

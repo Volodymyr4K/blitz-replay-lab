@@ -128,22 +128,23 @@ export function TeamTable({ rows, t, onOpen }: { rows: PlayerRow[]; t: T; onOpen
     }
   }
 
-  const header = (id: string, label: Key, align?: 'left') => (
-    <th
-      key={id}
-      className={`${sort.id === id ? 'sorted' : ''}${align === 'left' ? ' left' : ''}`}
-      onClick={() => setSort((s) => ({ id, dir: s.id === id ? (-s.dir as 1 | -1) : id === 'nick' || id === 'tank' ? 1 : -1 }))}
-      aria-sort={sort.id === id ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined}
-    >
-      {t(label)}
-      {sort.id === id && <span className="arrow">{sort.dir === 1 ? '▲' : '▼'}</span>}
+  const header = (id: string, label: Key, extra = '') => (
+    <th key={id} className={`${sort.id === id ? 'sorted' : ''} ${extra}`.trim()} aria-sort={sort.id === id ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined}>
+      <button
+        type="button"
+        className="sort-btn"
+        onClick={() => setSort((s) => ({ id, dir: s.id === id ? (-s.dir as 1 | -1) : id === 'nick' || id === 'tank' ? 1 : -1 }))}
+      >
+        {t(label)}
+        {sort.id === id && <span className="arrow">{sort.dir === 1 ? '▲' : '▼'}</span>}
+      </button>
     </th>
   )
 
   return (
     <div className="team-table">
       <div className="table-tools">
-        <input className="input search" placeholder={t('search')} value={query} onChange={(e) => setQuery(e.target.value)} />
+        <input className="input search" aria-label={t('search')} placeholder={t('search')} value={query} onChange={(e) => setQuery(e.target.value)} />
         {maxBattles > 1 && (
           <label className="min-battles">
             {t('minBattles')}
@@ -175,18 +176,18 @@ export function TeamTable({ rows, t, onOpen }: { rows: PlayerRow[]; t: T; onOpen
         <table className="grid">
           <thead>
             <tr>
-              <th className="rank-col">{t('colRank')}</th>
-              {header('nick', 'colPlayer', 'left')}
+              <th className="rank-col sticky-a">{t('colRank')}</th>
+              {header('nick', 'colPlayer', 'left sticky-b')}
               {cols.map((c) => header(c.id, c.label, c.align))}
             </tr>
           </thead>
           <tbody>
             {shown.map((r) => (
               <tr key={r.key} onClick={() => onOpen(r)} tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && onOpen(r)}>
-                <td className="rank-col">
+                <td className="rank-col sticky-a">
                   <span className={`rank r${rank.get(r.key)}`}>{rank.get(r.key)}</span>
                 </td>
-                <td className="left player-cell">
+                <td className="left player-cell sticky-b" title={r.clan ? `${r.nick} [${r.clan}]` : r.nick}>
                   <span className="nick">{r.nick}</span> <Clan tag={r.clan} />
                 </td>
                 {cols.map((c) => (

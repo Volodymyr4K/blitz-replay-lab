@@ -27,15 +27,55 @@ interface State {
   storageFull: boolean
 }
 
-const KEY = 'bra:session:v1'
+export const SESSION_KEY = 'bra:session:v1'
 const EMPTY: Session = { battles: [], errors: [], mode: 'scrim', roster: [], title: '' }
+
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
+const isNum = (v: unknown) => typeof v === 'number' && Number.isFinite(v)
+const isStr = (v: unknown) => typeof v === 'string'
+
+const RESULT_NUMS = [
+  'accountId',
+  'tankId',
+  'damageDealt',
+  'damageAssisted',
+  'damageBlocked',
+  'shots',
+  'hits',
+  'penetrations',
+  'enemiesDamaged',
+  'enemiesDestroyed',
+  'victoryPointsEarned',
+  'victoryPointsSeized',
+  'baseXp',
+]
+
+/**
+ * Stored data outlives code versions and can be damaged, so every battle is checked
+ * before the UI sees it; a bad one is dropped instead of breaking the page on every load.
+ */
+function isBattle(b: unknown): b is StoredBattle {
+  if (!isObj(b) || !isStr(b.arenaId) || !isStr(b.fileName) || !isObj(b.meta)) return false
+  if (![b.timestamp, b.mapId, b.roomType, b.authorId, b.authorTeam].every(isNum)) return false
+  if (b.winnerTeam !== null && !isNum(b.winnerTeam)) return false
+  if (!Array.isArray(b.players) || !Array.isArray(b.results)) return false
+  const playersOk = b.players.every((p) => isObj(p) && isNum(p.accountId) && isStr(p.nickname) && isNum(p.team) && (p.clanTag === null || isStr(p.clanTag)))
+  return playersOk && b.results.every((r) => isObj(r) && RESULT_NUMS.every((k) => isNum(r[k])))
+}
 
 function load(): Session {
   try {
-    const raw = localStorage.getItem(KEY)
+    const raw = localStorage.getItem(SESSION_KEY)
     if (!raw) return EMPTY
-    const s = JSON.parse(raw) as Partial<Session>
-    return { ...EMPTY, ...s, battles: Array.isArray(s.battles) ? s.battles : [] }
+    const s: unknown = JSON.parse(raw)
+    if (!isObj(s)) return EMPTY
+    return {
+      battles: Array.isArray(s.battles) ? s.battles.filter(isBattle) : [],
+      errors: Array.isArray(s.errors) ? s.errors.filter((e): e is FileError => isObj(e) && isStr(e.file) && isStr(e.reason)) : [],
+      mode: s.mode === 'individual' ? 'individual' : 'scrim',
+      roster: Array.isArray(s.roster) ? s.roster.filter(isStr) : [],
+      title: isStr(s.title) ? s.title : '',
+    }
   } catch {
     return EMPTY
   }
@@ -51,8 +91,8 @@ function emit(next: Partial<State>) {
 
 function persist(session: Session) {
   try {
-    if (!session.battles.length && !session.roster.length && !session.title) localStorage.removeItem(KEY)
-    else localStorage.setItem(KEY, JSON.stringify(session))
+    if (!session.battles.length && !session.roster.length && !session.title) localStorage.removeItem(SESSION_KEY)
+    else localStorage.setItem(SESSION_KEY, JSON.stringify(session))
     if (state.storageFull) emit({ storageFull: false })
   } catch {
     emit({ storageFull: true })
@@ -75,8 +115,15 @@ export function useStore(): State {
   )
 }
 
-export function clearSession() {
+/** Clear loaded battles; returns what was there so the caller can offer an undo. */
+export function clearSession(): Session {
+  const previous = state.session
   updateSession({ battles: [], errors: [], title: '' })
+  return previous
+}
+
+export function restoreSession(previous: Session) {
+  updateSession(previous)
 }
 
 export function removeBattle(id: string) {
