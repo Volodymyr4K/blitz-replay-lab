@@ -32,6 +32,11 @@ describe('game data merge', () => {
     expect(rejected).toHaveLength(3)
   })
 
+  it('never publishes supertest vehicles', () => {
+    const out = fromAftermath({ 1: { names: { en: 'Secret' }, class: 'heavyTank', tier: 10, superTest: true }, 2: { names: { en: 'Public' }, class: 'heavyTank', tier: 10 } }, [])
+    expect(Object.keys(out)).toEqual(['2'])
+  })
+
   it('merges map names', () => {
     const { maps, changes } = mergeMaps({ 5: { en: 'Old', uk: 'Old' } }, { 5: { names: { en: 'Falls Creek', uk: 'Протока' } }, 6: { names: { en: '<b>' } } }, [])
     expect(maps[5]).toEqual({ en: 'Falls Creek', uk: 'Протока' })

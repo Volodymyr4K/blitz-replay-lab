@@ -63,4 +63,6 @@ npm run update-data  # оновити базу танків і мап
 - [eigenein/wotbreplay-parser](https://github.com/eigenein/wotbreplay-parser) — дослідження формату реплеїв; тестові реплеї.
 - [Cufee/aftermath-assets](https://github.com/Cufee/aftermath-assets), [Jylpah/blitz-tools](https://github.com/Jylpah/blitz-tools) — дані про танки й мапи.
 
-Проєкт не пов'язаний з Wargaming.net. Ліцензія — MIT, див. [LICENSE](LICENSE).
+Фанатський проєкт, не пов'язаний з Wargaming і не схвалений ним. World of Tanks Blitz — торгова марка Wargaming; ігрові дані й назви © Wargaming.net. Логотипи Wargaming не використовуються. Код — MIT, див. [LICENSE](LICENSE).
+
+Картинка для прев'ю посилань: `node scripts/og-image.mjs` → `public/og.png`.

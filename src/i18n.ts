@@ -230,10 +230,14 @@ const en = {
     'Replays are read by JavaScript inside your browser. They are never uploaded — there is no server, database or analytics.',
   privacyBody2:
     'The current session (parsed battle results, roster, language) is kept in your browser’s storage (IndexedDB) so it survives a reload and stays in sync across open tabs. “New analysis” deletes it. Browsers may clear site data after long inactivity (Safari: about 7 days), so share or export anything you want to keep.',
+  privacyHosting:
+    'The site is hosted on GitHub Pages; like any web host, GitHub sees visitors’ IP addresses (see GitHub’s privacy statement). The site itself sets no cookies and loads nothing from other servers.',
   privacyBody3:
     'Share links contain the aggregated report itself (nicknames, account IDs and stats), compressed into the URL. Anyone with the link can read it, and a link cannot be revoked. The site does not verify a shared report — treat it like a screenshot from whoever sent it.',
 
-  footerCredit: 'Replay format research: eigenein/wotbreplay-parser. BPR 2.0: BlitzScrim. Not affiliated with Wargaming.',
+  footerCredit: 'Replay format research: eigenein/wotbreplay-parser. BPR 2.0: BlitzScrim.',
+  footerTrademark: 'Fan-made and not affiliated with or endorsed by Wargaming. World of Tanks Blitz is a trademark of Wargaming. Game data and names © Wargaming.net. All rights reserved.',
+  officialSite: 'Official site',
 } satisfies Record<string, string | Plural>
 
 export type Key = keyof typeof en
@@ -469,10 +473,14 @@ const uk: Dict = {
     'Реплеї читає JavaScript прямо у твоєму браузері. Вони нікуди не відправляються — тут немає сервера, бази даних чи аналітики.',
   privacyBody2:
     'Поточна сесія (розібрані результати боїв, склад, мова) зберігається в сховищі браузера (IndexedDB), щоб пережити перезавантаження, і синхронізується між відкритими вкладками. «Новий аналіз» її видаляє. Браузери можуть очищати дані сайтів після тривалої неактивності (Safari — приблизно через 7 днів), тож те, що хочеш зберегти, поширюй посиланням або експортуй.',
+  privacyHosting:
+    'Сайт розміщено на GitHub Pages; як і будь-який хостинг, GitHub бачить IP-адреси відвідувачів (див. політику приватності GitHub). Сам сайт не ставить cookie і нічого не завантажує з інших серверів.',
   privacyBody3:
     'Посилання для шерингу містить сам звіт (ніки, ID акаунтів і статистику), стиснутий в URL. Будь-хто з посиланням може його прочитати, і відкликати посилання неможливо. Сайт не перевіряє дані в чужому звіті — сприймай його як скріншот від того, хто надіслав.',
 
-  footerCredit: 'Формат реплеїв: eigenein/wotbreplay-parser. BPR 2.0: BlitzScrim. Не пов’язано з Wargaming.',
+  footerCredit: 'Формат реплеїв: eigenein/wotbreplay-parser. BPR 2.0: BlitzScrim.',
+  footerTrademark: 'Фанатський проєкт, не пов’язаний з Wargaming і не схвалений ним. World of Tanks Blitz — торгова марка Wargaming. Ігрові дані й назви © Wargaming.net. Усі права захищено.',
+  officialSite: 'Офіційний сайт',
 }
 
 const dicts: Record<Lang, Dict> = { en, uk }

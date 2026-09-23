@@ -33,8 +33,13 @@ export function normalizeTanks(rows, pick, rejected) {
   return out
 }
 
-/** Aftermath asset dump: { id: { names: { en }, class, tier } }. @type {(rows: any, rejected: string[]) => TankTable} */
-export const fromAftermath = (rows, rejected) => normalizeTanks(rows, (v) => ({ name: v?.names?.en, cls: v?.class, tier: v?.tier }), rejected)
+/**
+ * Aftermath asset dump: { id: { names: { en }, class, tier, superTest } }.
+ * Supertest vehicles are skipped: Wargaming forbids publishing supertest information.
+ * @type {(rows: any, rejected: string[]) => TankTable}
+ */
+export const fromAftermath = (rows, rejected) =>
+  normalizeTanks(rows, (v) => (v?.superTest ? undefined : { name: v?.names?.en, cls: v?.class, tier: v?.tier }), rejected)
 
 /** Wargaming API encyclopedia/vehicles `data`: { id: { name, type, tier } }. @type {(rows: any, rejected: string[]) => TankTable} */
 export const fromWargaming = (rows, rejected) => normalizeTanks(rows, (v) => ({ name: v?.name, cls: v?.type, tier: v?.tier }), rejected)

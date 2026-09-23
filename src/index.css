@@ -289,6 +289,12 @@ button {
   color: var(--muted);
 }
 
+.footer-legal {
+  flex-basis: 100%;
+  color: var(--faint);
+  font-size: 12px;
+}
+
 /* ---------- controls ---------- */
 
 .btn {

@@ -95,7 +95,11 @@ export default function App() {
           <a href={REPO_URL} target="_blank" rel="noreferrer">
             GitHub
           </a>
+          <a href="https://wotblitz.com/" target="_blank" rel="noreferrer">
+            {t('officialSite')}
+          </a>
         </span>
+        <small className="footer-legal">{t('footerTrademark')}</small>
       </footer>
 
       {progress && (
@@ -270,6 +274,7 @@ function Privacy({ t }: { t: T }) {
       <h1>{t('privacyTitle')}</h1>
       <p>{t('privacyBody1')}</p>
       <p>{t('privacyBody2')}</p>
+      <p>{t('privacyHosting')}</p>
       <p>{t('privacyBody3')}</p>
     </article>
   )
