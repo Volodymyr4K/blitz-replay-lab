@@ -141,11 +141,15 @@ async function flush() {
   }
 }
 
-/** Coalesce rapid edits (typing a title) into one write. */
-function persist(session: Session) {
+/**
+ * Typing a title is coalesced into one write; anything else (battles, roster, mode) is written
+ * at once — a reload right after dropping replays must not lose them.
+ */
+function persist(session: Session, coalesce: boolean) {
   pending = session
   clearTimeout(timer)
-  timer = setTimeout(flush, 250)
+  if (coalesce) timer = setTimeout(flush, 250)
+  else void flush()
 }
 
 if (channel) {
@@ -169,7 +173,7 @@ if (typeof window !== 'undefined') {
 export function updateSession(patch: Partial<Session>) {
   const session = { ...state.session, ...patch }
   emit({ session })
-  persist(session)
+  persist(session, Object.keys(patch).every((k) => k === 'title'))
 }
 
 /** Wipe everything this app stored — the escape hatch when saved data breaks the page. */

@@ -1,5 +1,5 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, type Plugin } from 'vitest/config'
 
 /**
  * GitHub Pages cannot send security headers, so the policy ships as a <meta> tag.
@@ -30,4 +30,6 @@ export default defineConfig({
   base: './',
   plugins: [react(), contentSecurityPolicy()],
   worker: { format: 'es' },
+  // Unit tests only; e2e/ belongs to Playwright.
+  test: { include: ['test/**/*.test.ts'] },
 })

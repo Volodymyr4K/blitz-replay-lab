@@ -1,5 +1,8 @@
 // Pure merge logic for game data, kept apart from the network code so it can be tested.
 
+/** @typedef {[name: string, cls: string, tier: number]} TankEntry */
+/** @typedef {Record<string, TankEntry>} TankTable */
+
 export const CLASS = { heavyTank: 'HT', mediumTank: 'MT', lightTank: 'LT', 'AT-SPG': 'TD' }
 
 // Upstream data is third-party, so accept only plain display names and sane values.
@@ -10,8 +13,13 @@ const safeTier = (t) => (Number.isInteger(t) && t >= 0 && t <= 10 ? t : 0)
 /**
  * Normalise one source into { id: [name, class, tier] }.
  * `rows` maps tank IDs to objects; `pick` extracts { name, cls, tier } from each.
+ * @param {Record<string, any> | undefined} rows
+ * @param {(row: any) => { name?: string, cls?: string, tier?: number } | undefined} pick
+ * @param {string[]} rejected
+ * @returns {TankTable}
  */
 export function normalizeTanks(rows, pick, rejected) {
+  /** @type {TankTable} */
   const out = {}
   for (const [id, row] of Object.entries(rows ?? {})) {
     const { name, cls, tier } = pick(row) ?? {}
@@ -25,16 +33,19 @@ export function normalizeTanks(rows, pick, rejected) {
   return out
 }
 
-/** Aftermath asset dump: { id: { names: { en }, class, tier } }. */
+/** Aftermath asset dump: { id: { names: { en }, class, tier } }. @type {(rows: any, rejected: string[]) => TankTable} */
 export const fromAftermath = (rows, rejected) => normalizeTanks(rows, (v) => ({ name: v?.names?.en, cls: v?.class, tier: v?.tier }), rejected)
 
-/** Wargaming API encyclopedia/vehicles `data`: { id: { name, type, tier } }. */
+/** Wargaming API encyclopedia/vehicles `data`: { id: { name, type, tier } }. @type {(rows: any, rejected: string[]) => TankTable} */
 export const fromWargaming = (rows, rejected) => normalizeTanks(rows, (v) => ({ name: v?.name, cls: v?.type, tier: v?.tier }), rejected)
 
 /**
  * Layer sources over the existing table, lowest priority first. A later source replaces an
  * entry, but never wipes a known class or tier with an empty one. Nothing is ever removed,
  * so tanks that leave the game still resolve in old replays.
+ * @param {Record<string, any>} existing
+ * @param {...TankTable} sources
+ * @returns {{ tanks: TankTable, changes: number }}
  */
 export function mergeTanks(existing, ...sources) {
   const tanks = { ...existing }
@@ -52,6 +63,12 @@ export function mergeTanks(existing, ...sources) {
   return { tanks, changes }
 }
 
+/**
+ * @param {Record<string, { en: string, uk: string }>} existing
+ * @param {Record<string, any>} rows
+ * @param {string[]} rejected
+ * @returns {{ maps: Record<string, { en: string, uk: string }>, changes: number }}
+ */
 export function mergeMaps(existing, rows, rejected) {
   const maps = { ...existing }
   let changes = 0

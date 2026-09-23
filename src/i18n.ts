@@ -441,7 +441,7 @@ function initialLang(): Lang {
   } catch {
     /* storage unavailable */
   }
-  return navigator.language?.toLowerCase().startsWith('uk') ? 'uk' : 'en'
+  return typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('uk') ? 'uk' : 'en'
 }
 
 let current: Lang = initialLang()
@@ -485,4 +485,4 @@ export function useT(): T {
   return useCallback<T>((key, vars) => translate(lang, key, vars), [lang])
 }
 
-document.documentElement.lang = current
+if (typeof document !== 'undefined') document.documentElement.lang = current

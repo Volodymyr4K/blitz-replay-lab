@@ -1,4 +1,3 @@
-// @ts-expect-error — plain .mjs build script without type declarations
 import { fromAftermath, fromWargaming, mergeMaps, mergeTanks } from '../scripts/merge-data.mjs'
 import { describe, expect, it } from 'vitest'
 
