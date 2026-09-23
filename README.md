@@ -46,6 +46,17 @@ npm run update-data  # оновити базу танків і мап
 
 Перше налаштування: **Settings → Pages → Source: GitHub Actions**.
 
+### Дані танків і мап
+
+Назви, класи й рівні танків та назви мап лежать у `src/data/` і оновлюються щомісяця.
+
+- Базове джерело — [Cufee/aftermath-assets](https://github.com/Cufee/aftermath-assets) (без ліцензії, тож це тимчасове рішення).
+- **Офіційний API Wargaming** має пріоритет, якщо задано ключ:
+  1. увійти на [developers.wargaming.net](https://developers.wargaming.net/applications/) → *Add application*, тип **Mobile** (без прив'язки до IP);
+  2. у репозиторії: **Settings → Secrets and variables → Actions → New repository secret**, назва `WG_APP_ID`, значення — ID застосунку;
+  3. **Actions → Deploy → Run workflow**, щоб оновити дані одразу.
+- Кілька танків, яким бракує класу в обох джерелах, доповнено вручну з посиланнями на джерела (`CLASS_GAPS` у `src/data/lookup.ts`).
+
 ## Подяки
 
 - [roklimovich/wotblitz-replay-analyzer](https://github.com/roklimovich/wotblitz-replay-analyzer) (BlitzScrim) — формула BPR 2.0 та ідея інструмента.

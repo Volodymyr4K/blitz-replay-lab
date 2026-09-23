@@ -1,6 +1,7 @@
 // Expected values mirror eigenein/wotbreplay-parser's own test-suite (MIT).
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { tankInfo } from '../src/data/lookup'
 import { parseReplay } from '../src/parser/replay'
 
 const load = (name: string) => parseReplay(new Uint8Array(readFileSync(new URL(`./fixtures/${name}`, import.meta.url))))
@@ -87,5 +88,20 @@ describe('parseReplay', () => {
 
   it('rejects garbage', () => {
     expect(() => parseReplay(new Uint8Array([1, 2, 3]))).toThrow()
+  })
+})
+
+describe('tank data', () => {
+  it('knows the class of every tank in the 2026 scrim fixture', () => {
+    const r = load('scrim_2026.wotbreplay')
+    const missing = r.results.map((x) => tankInfo(x.tankId)).filter((t) => !t.type)
+    expect(missing.map((t) => t.name)).toEqual([])
+  })
+
+  it('fills known class gaps without overriding real data', () => {
+    expect(tankInfo(28689)).toEqual({ name: 'Rhm. Pzw.', type: 'LT', tier: 10 })
+    expect(tankInfo(20097).type).toBe('HT')
+    expect(tankInfo(1)).toEqual({ name: 'T-34', type: 'MT', tier: 5 })
+    expect(tankInfo(999999)).toEqual({ name: 'Tank #999999', type: '', tier: 0 })
   })
 })
