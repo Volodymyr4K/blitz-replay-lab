@@ -8,6 +8,12 @@ const BASE = 'https://raw.githubusercontent.com/Cufee/aftermath-assets/main/asse
 const CLASS = { heavyTank: 'HT', mediumTank: 'MT', lightTank: 'LT', 'AT-SPG': 'TD' }
 const root = new URL('../src/data/', import.meta.url)
 
+// Upstream is a third-party repo, so accept only plain display names and sane values.
+const SAFE_NAME = /^[\p{L}\p{N} .,'’()\-–+/&!#:*]{1,40}$/u
+const MAX_CHANGES = 150
+const rejected = []
+const safeName = (s) => typeof s === 'string' && SAFE_NAME.test(s)
+
 async function fetchJson(name) {
   const res = await fetch(`${BASE}/${name}`)
   if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`)
@@ -34,7 +40,12 @@ let tankChanges = 0
 for (const [id, v] of Object.entries(vehicles)) {
   const name = v.names?.en
   if (!name) continue
-  const next = [name, CLASS[v.class] ?? '', v.tier ?? 0]
+  const tier = Number.isInteger(v.tier) && v.tier >= 0 && v.tier <= 10 ? v.tier : 0
+  if (!/^\d+$/.test(id) || !safeName(name)) {
+    rejected.push(`tank ${id}: ${JSON.stringify(name)}`)
+    continue
+  }
+  const next = [name, CLASS[v.class] ?? '', tier]
   if (JSON.stringify(tanks[id]) !== JSON.stringify(next)) {
     tanks[id] = next
     tankChanges++
@@ -45,11 +56,21 @@ let mapChanges = 0
 for (const [id, m] of Object.entries(maps)) {
   const en = m.names?.en
   if (!en) continue
-  const next = { en, uk: m.names.uk || en }
+  const uk = m.names.uk || en
+  if (!/^\d+$/.test(id) || !safeName(en) || !safeName(uk)) {
+    rejected.push(`map ${id}: ${JSON.stringify([en, uk])}`)
+    continue
+  }
+  const next = { en, uk }
   if (JSON.stringify(mapNames[id]) !== JSON.stringify(next)) {
     mapNames[id] = next
     mapChanges++
   }
+}
+
+if (rejected.length) console.warn(`skipped ${rejected.length} suspicious entries:\n  ${rejected.join('\n  ')}`)
+if (tankChanges + mapChanges > MAX_CHANGES) {
+  throw new Error(`${tankChanges + mapChanges} changes in one run looks wrong — refusing to write; review upstream manually`)
 }
 
 await write('tanks.json', tanks)
