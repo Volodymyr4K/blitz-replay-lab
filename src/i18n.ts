@@ -1,0 +1,452 @@
+import { useCallback, useSyncExternalStore } from 'react'
+
+export type Lang = 'uk' | 'en'
+
+const en = {
+  tagline: 'WoT Blitz replay analyzer',
+  navAnalyzer: 'Analyzer',
+  navGuide: 'BPR 2.0 guide',
+  navPrivacy: 'Privacy',
+
+  heroTitle: 'Turn replays into team stats',
+  heroSub: 'Drop your .wotbreplay files and get BPR 2.0, damage, accuracy and win rate for both teams — in seconds.',
+  heroPrivate: 'Runs entirely in your browser. Replays never leave your device.',
+  dropTitle: 'Drop replays or a folder here',
+  dropHint: 'or click to choose .wotbreplay files',
+  chooseFiles: 'Choose files',
+  chooseFolder: 'Choose folder',
+  whereReplays: 'Where are my replays? On PC: Documents\\TanksBlitz\\replays',
+  feature1Title: 'Scrims',
+  feature1Text: 'Both teams side by side, with BPR 2.0 and a clear edge summary.',
+  feature2Title: 'Personal sessions',
+  feature2Text: 'Track your own form across a session, tank by tank and battle by battle.',
+  feature3Title: 'Share & export',
+  feature3Text: 'One link for your team chat, or an Excel sheet for your notes.',
+
+  modeScrim: 'Scrim',
+  modeIndividual: 'Personal',
+  modeHint: 'Scrim compares both teams. Personal focuses on the replay author.',
+  sessionTitle: 'Session name',
+  sessionTitlePh: 'e.g. Scrim vs [CLAN], 23 Sep',
+  addReplays: 'Add replays',
+  share: 'Share',
+  exportXlsx: 'Excel',
+  newAnalysis: 'New analysis',
+  confirmClear: 'Clear all loaded replays and start over?',
+
+  parsing: 'Reading replays… {done}/{total}',
+  addedN: 'Added {n} battle(s)',
+  dupN: '{n} duplicate(s) skipped',
+  failedN: '{n} file(s) could not be read',
+  notReplays: 'Only .wotbreplay files are supported',
+  storageFull: 'Browser storage is full — this session will not survive a reload.',
+
+  statBattles: 'Battles',
+  statRecord: 'Record',
+  statWinRate: 'Win rate',
+  statOurBpr: 'Our avg BPR',
+  statEnemyBpr: 'Enemy avg BPR',
+  statAdr: 'Avg ADR',
+  statMvp: 'MVP',
+  statErrors: 'Errors',
+
+  tabOverview: 'Overview',
+  tabOur: 'Our team',
+  tabEnemy: 'Enemy team',
+  tabBattles: 'Battles',
+  tabRoster: 'Roster',
+
+  ourTeam: 'Our team',
+  enemyTeam: 'Enemy team',
+  avgBpr: 'avg BPR',
+  vs: 'VS',
+  teamCompare: 'Team comparison',
+  classMix: 'Tank classes',
+  topPlayers: 'Top players',
+  summary: 'Summary',
+  copy: 'Copy',
+  copied: 'Copied',
+
+  sumEdge: 'Our team leads by {v} BPR.',
+  sumGap: 'Enemy team leads by {v} BPR.',
+  sumDmgAhead: 'We out-damage them by {v} per player per battle.',
+  sumDmgBehind: 'They out-damage us by {v} per player per battle.',
+  sumRecord: 'Record: {w}W / {l}L / {d}D ({wr} win rate).',
+  sumMvp: 'MVP: {nick} — {bpr} BPR, {adr} ADR on {tank}.',
+  sumFocusStructure: 'Focus: keep the structure — trades are working.',
+  sumFocusFire: 'Focus: tighten focus fire and trade HP more carefully.',
+  sumYou: '{nick}: {bpr} BPR, {adr} ADR, {kpr} KPR over {n} battle(s).',
+  sumNext: 'Next target: {adr}+ ADR. Accuracy {h}% hit / {p}% pen.',
+  sumSupport: 'Work on support: more spotting/assist and blocked damage.',
+  sumDamage: 'Work on damage output — support numbers are already solid.',
+
+  focusPlayer: 'Focus player',
+  byTank: 'By tank',
+  byBattle: 'Battle by battle',
+  bprTrend: 'BPR per battle',
+
+  search: 'Search player…',
+  minBattles: 'Min. battles',
+  columns: 'Columns',
+  playersN: '{n} player(s)',
+  noPlayers: 'No players found',
+
+  colRank: '#',
+  colPlayer: 'Player',
+  colBpr: 'BPR 2.0',
+  colBattles: 'Battles',
+  colWr: 'WR',
+  colTank: 'Main tank',
+  tank: 'Tank',
+  colAdr: 'ADR',
+  colKpr: 'KPR',
+  colFrags: 'Frags',
+  colDe: 'DE',
+  colAssist: 'Assist',
+  colBlocked: 'Blocked',
+  colAccH: 'Hit %',
+  colAccP: 'Pen %',
+  colFirepower: 'Firepower',
+  colAim: 'AIM',
+  colSupport: 'Support',
+  colSupremacy: 'Supremacy',
+  colIPoints: 'Cap pts',
+  colSPoints: 'Seized pts',
+  colShots: 'Shots',
+  colHits: 'Hits',
+  colPens: 'Pens',
+  colXp: 'XP',
+  colClasses: 'HT/MT/LT/TD',
+  colId: 'Account ID',
+
+  battleDate: 'Date',
+  battleMap: 'Map',
+  battleResult: 'Result',
+  battleAuthor: 'Replay by',
+  battleDamage: 'Damage (us : them)',
+  battleFrags: 'Frags',
+  battleDuration: 'Duration',
+  battleRoom: 'Mode',
+  remove: 'Remove',
+  win: 'Win',
+  loss: 'Loss',
+  draw: 'Draw',
+  viaRoster: 'side from roster',
+
+  rosterTitle: 'Your roster',
+  rosterText:
+    'By default “our team” is the team of whoever recorded the replay. If replays come from different players (or from the enemy), list your players here — one nickname per line — or your clan tag in brackets like [CLAN]. Each battle is then assigned to the team with more roster members.',
+  rosterPh: 'nickname_1\nnickname_2\n[CLAN]',
+  rosterImport: 'Import from Excel / CSV / TXT',
+  rosterImported: 'Imported {n} name(s)',
+  rosterSaved: 'Roster saved',
+  rosterClear: 'Clear',
+  save: 'Save',
+
+  modalKpis: 'Key stats',
+  modalComponents: 'BPR components',
+  modalTanks: 'Tanks',
+  modalBattles: 'Battles',
+  modalNoBattles: 'Per-battle details are not included in shared links.',
+  close: 'Close',
+
+  sharedBanner: 'Shared report',
+  sharedCreated: 'created {date}',
+  sharedOwn: 'Analyze your own replays',
+  sharedBad: 'This share link is broken or incomplete.',
+  shareCopied: 'Link copied — paste it anywhere',
+  shareTitle: 'Share this report',
+  shareText: 'The whole report is packed into the link — no account, no expiry. Anyone with it can view the stats.',
+  shareOpen: 'Open',
+  shareTooLong: 'Link is long ({n} chars); some chats may cut it.',
+  exportDone: 'Excel file saved',
+
+  roomRegular: 'Regular',
+  roomTraining: 'Training room',
+  roomTournament: 'Tournament',
+  roomRating: 'Rating',
+  roomOther: 'Mode {n}',
+
+  errorsTitle: 'Files that could not be read',
+  unknownError: 'unknown error',
+
+  guideTitle: 'BPR 2.0 — how the rating works',
+  guideIntro:
+    'BPR 2.0 (Blitz Performance Rating) condenses a player’s per-battle averages into one number. Around 1.0 is a solid competitive performance.',
+  guideTiers: 'Rating bands',
+  guideComponents: 'Components and weights',
+  guideFirepower: 'Firepower — average damage and kills per battle. Weight 17.',
+  guideAim: 'AIM — hit rate and penetration rate. Weight 3.',
+  guideSupport: 'Support — enemies damaged, assisted and blocked damage. Weight 2.',
+  guideSupremacy: 'Supremacy — capture points earned and seized. Weight 3.',
+  guideNote:
+    'The formula is taken from BlitzScrim (github.com/roklimovich/wotblitz-replay-analyzer). Team averages here are weighted by battles played.',
+  tierElite: 'Elite',
+  tierHigh: 'Strong',
+  tierMid: 'Average',
+  tierLow: 'Below average',
+
+  privacyTitle: 'Privacy',
+  privacyBody1:
+    'Replays are read by JavaScript inside your browser. They are never uploaded — there is no server, database or analytics.',
+  privacyBody2:
+    'The current session (parsed battle results, roster, language) is kept in your browser’s local storage so it survives a reload. “New analysis” deletes it.',
+  privacyBody3:
+    'Share links contain the aggregated report itself (nicknames and stats), compressed into the URL. Anyone with the link can read it.',
+
+  footerCredit: 'Replay format research: eigenein/wotbreplay-parser. BPR 2.0: BlitzScrim. Not affiliated with Wargaming.',
+}
+
+export type Dict = typeof en
+export type Key = keyof Dict
+
+const uk: Dict = {
+  tagline: 'Аналізатор реплеїв WoT Blitz',
+  navAnalyzer: 'Аналізатор',
+  navGuide: 'Про BPR 2.0',
+  navPrivacy: 'Приватність',
+
+  heroTitle: 'Реплеї → командна статистика',
+  heroSub: 'Закинь файли .wotbreplay — і за секунди отримаєш BPR 2.0, шкоду, точність і вінрейт обох команд.',
+  heroPrivate: 'Все працює у твоєму браузері. Реплеї нікуди не завантажуються.',
+  dropTitle: 'Перетягни сюди реплеї або папку',
+  dropHint: 'або натисни, щоб вибрати файли .wotbreplay',
+  chooseFiles: 'Вибрати файли',
+  chooseFolder: 'Вибрати папку',
+  whereReplays: 'Де реплеї? На ПК: Документи\\TanksBlitz\\replays',
+  feature1Title: 'Скріми',
+  feature1Text: 'Обидві команди поруч, BPR 2.0 і зрозумілий підсумок, хто сильніший.',
+  feature2Title: 'Особиста сесія',
+  feature2Text: 'Слідкуй за своєю формою по танках і по кожному бою.',
+  feature3Title: 'Поділитись і експорт',
+  feature3Text: 'Одне посилання в чат команди або Excel-таблиця для нотаток.',
+
+  modeScrim: 'Скрім',
+  modeIndividual: 'Особисто',
+  modeHint: 'Скрім порівнює дві команди. «Особисто» фокусується на авторі реплеїв.',
+  sessionTitle: 'Назва сесії',
+  sessionTitlePh: 'напр. Скрім проти [CLAN], 23 вер',
+  addReplays: 'Додати реплеї',
+  share: 'Поділитись',
+  exportXlsx: 'Excel',
+  newAnalysis: 'Новий аналіз',
+  confirmClear: 'Очистити всі завантажені реплеї і почати заново?',
+
+  parsing: 'Читаю реплеї… {done}/{total}',
+  addedN: 'Додано боїв: {n}',
+  dupN: 'Пропущено дублікатів: {n}',
+  failedN: 'Не вдалося прочитати файлів: {n}',
+  notReplays: 'Підтримуються лише файли .wotbreplay',
+  storageFull: 'Сховище браузера заповнене — після перезавантаження сесія не збережеться.',
+
+  statBattles: 'Боїв',
+  statRecord: 'Рахунок',
+  statWinRate: 'Вінрейт',
+  statOurBpr: 'Наш сер. BPR',
+  statEnemyBpr: 'BPR суперника',
+  statAdr: 'Сер. шкода',
+  statMvp: 'MVP',
+  statErrors: 'Помилки',
+
+  tabOverview: 'Огляд',
+  tabOur: 'Наша команда',
+  tabEnemy: 'Суперники',
+  tabBattles: 'Бої',
+  tabRoster: 'Склад',
+
+  ourTeam: 'Наша команда',
+  enemyTeam: 'Суперники',
+  avgBpr: 'сер. BPR',
+  vs: 'VS',
+  teamCompare: 'Порівняння команд',
+  classMix: 'Класи техніки',
+  topPlayers: 'Топ гравців',
+  summary: 'Підсумок',
+  copy: 'Копіювати',
+  copied: 'Скопійовано',
+
+  sumEdge: 'Наша команда попереду на {v} BPR.',
+  sumGap: 'Суперник попереду на {v} BPR.',
+  sumDmgAhead: 'Ми наносимо на {v} більше шкоди на гравця за бій.',
+  sumDmgBehind: 'Суперник наносить на {v} більше шкоди на гравця за бій.',
+  sumRecord: 'Рахунок: {w} перемог / {l} поразок / {d} нічиїх (вінрейт {wr}).',
+  sumMvp: 'MVP: {nick} — {bpr} BPR, {adr} шкоди на {tank}.',
+  sumFocusStructure: 'Фокус: тримайте структуру — розміни працюють.',
+  sumFocusFire: 'Фокус: більше фокус-вогню і акуратніші розміни ХП.',
+  sumYou: '{nick}: {bpr} BPR, {adr} шкоди, {kpr} фрагів за бій ({n} боїв).',
+  sumNext: 'Наступна ціль: {adr}+ шкоди. Точність: {h}% влучань / {p}% пробиттів.',
+  sumSupport: 'Попрацюй над підтримкою: більше засвіту/асисту і заблокованої шкоди.',
+  sumDamage: 'Попрацюй над шкодою — з підтримкою вже все добре.',
+
+  focusPlayer: 'Гравець у фокусі',
+  byTank: 'По танках',
+  byBattle: 'По боях',
+  bprTrend: 'BPR за бій',
+
+  search: 'Пошук гравця…',
+  minBattles: 'Мін. боїв',
+  columns: 'Колонки',
+  playersN: 'Гравців: {n}',
+  noPlayers: 'Гравців не знайдено',
+
+  colRank: '#',
+  colPlayer: 'Гравець',
+  colBpr: 'BPR 2.0',
+  colBattles: 'Бої',
+  colWr: 'ВР',
+  colTank: 'Основний танк',
+  tank: 'Танк',
+  colAdr: 'Шкода',
+  colKpr: 'Фраги/бій',
+  colFrags: 'Фраги',
+  colDe: 'Пошкодж.',
+  colAssist: 'Асист',
+  colBlocked: 'Блок',
+  colAccH: 'Влуч. %',
+  colAccP: 'Проб. %',
+  colFirepower: 'Вогонь',
+  colAim: 'Точність',
+  colSupport: 'Підтримка',
+  colSupremacy: 'Контроль',
+  colIPoints: 'Очки захоп.',
+  colSPoints: 'Очки відб.',
+  colShots: 'Постріли',
+  colHits: 'Влучання',
+  colPens: 'Пробиття',
+  colXp: 'Досвід',
+  colClasses: 'ТТ/СТ/ЛТ/ПТ',
+  colId: 'ID акаунта',
+
+  battleDate: 'Дата',
+  battleMap: 'Мапа',
+  battleResult: 'Результат',
+  battleAuthor: 'Реплей від',
+  battleDamage: 'Шкода (ми : вони)',
+  battleFrags: 'Фраги',
+  battleDuration: 'Тривалість',
+  battleRoom: 'Режим',
+  remove: 'Прибрати',
+  win: 'Перемога',
+  loss: 'Поразка',
+  draw: 'Нічия',
+  viaRoster: 'сторона за складом',
+
+  rosterTitle: 'Склад вашої команди',
+  rosterText:
+    'За замовчуванням «наша команда» — це команда того, хто записав реплей. Якщо реплеї від різних гравців (або від суперника), впиши сюди своїх гравців — по одному ніку в рядку — або клан-тег у дужках, як [CLAN]. Тоді кожен бій віднесеться до команди, де більше гравців зі складу.',
+  rosterPh: 'nickname_1\nnickname_2\n[CLAN]',
+  rosterImport: 'Імпорт з Excel / CSV / TXT',
+  rosterImported: 'Імпортовано імен: {n}',
+  rosterSaved: 'Склад збережено',
+  rosterClear: 'Очистити',
+  save: 'Зберегти',
+
+  modalKpis: 'Основне',
+  modalComponents: 'Складові BPR',
+  modalTanks: 'Танки',
+  modalBattles: 'Бої',
+  modalNoBattles: 'Деталі по боях не входять у посилання для шерингу.',
+  close: 'Закрити',
+
+  sharedBanner: 'Звіт по посиланню',
+  sharedCreated: 'створено {date}',
+  sharedOwn: 'Проаналізувати свої реплеї',
+  sharedBad: 'Посилання пошкоджене або неповне.',
+  shareCopied: 'Посилання скопійовано — встав куди завгодно',
+  shareTitle: 'Поділитися звітом',
+  shareText: 'Весь звіт запакований у посилання — без акаунта і без терміну дії. Будь-хто з ним побачить статистику.',
+  shareOpen: 'Відкрити',
+  shareTooLong: 'Посилання довге ({n} симв.), деякі чати можуть його обрізати.',
+  exportDone: 'Excel-файл збережено',
+
+  roomRegular: 'Звичайний',
+  roomTraining: 'Тренувальна кімната',
+  roomTournament: 'Турнір',
+  roomRating: 'Рейтинг',
+  roomOther: 'Режим {n}',
+
+  errorsTitle: 'Файли, які не вдалося прочитати',
+  unknownError: 'невідома помилка',
+
+  guideTitle: 'BPR 2.0 — як рахується рейтинг',
+  guideIntro:
+    'BPR 2.0 (Blitz Performance Rating) зводить середні показники гравця за бій в одне число. Близько 1.0 — це впевнена гра на змагальному рівні.',
+  guideTiers: 'Діапазони',
+  guideComponents: 'Складові і ваги',
+  guideFirepower: 'Вогонь — середня шкода і фраги за бій. Вага 17.',
+  guideAim: 'Точність — відсоток влучань і пробиттів. Вага 3.',
+  guideSupport: 'Підтримка — кількість пошкоджених ворогів, асист і заблокована шкода. Вага 2.',
+  guideSupremacy: 'Контроль — очки захоплення, набрані й відбиті. Вага 3.',
+  guideNote:
+    'Формулу взято з BlitzScrim (github.com/roklimovich/wotblitz-replay-analyzer). Середні по команді тут зважені за кількістю боїв.',
+  tierElite: 'Еліта',
+  tierHigh: 'Сильно',
+  tierMid: 'Середньо',
+  tierLow: 'Нижче середнього',
+
+  privacyTitle: 'Приватність',
+  privacyBody1:
+    'Реплеї читає JavaScript прямо у твоєму браузері. Вони нікуди не відправляються — тут немає сервера, бази даних чи аналітики.',
+  privacyBody2:
+    'Поточна сесія (розібрані результати боїв, склад, мова) зберігається в локальному сховищі браузера, щоб пережити перезавантаження. «Новий аналіз» її видаляє.',
+  privacyBody3:
+    'Посилання для шерингу містить сам звіт (ніки і статистику), стиснутий в URL. Будь-хто з посиланням може його прочитати.',
+
+  footerCredit: 'Формат реплеїв: eigenein/wotbreplay-parser. BPR 2.0: BlitzScrim. Не пов’язано з Wargaming.',
+}
+
+const dicts: Record<Lang, Dict> = { en, uk }
+const LANG_KEY = 'bra:lang'
+
+function initialLang(): Lang {
+  try {
+    const saved = localStorage.getItem(LANG_KEY)
+    if (saved === 'uk' || saved === 'en') return saved
+  } catch {
+    /* storage unavailable */
+  }
+  return navigator.language?.toLowerCase().startsWith('uk') ? 'uk' : 'en'
+}
+
+let current: Lang = initialLang()
+const listeners = new Set<() => void>()
+
+export function setLang(lang: Lang) {
+  current = lang
+  document.documentElement.lang = lang
+  try {
+    localStorage.setItem(LANG_KEY, lang)
+  } catch {
+    /* ignore */
+  }
+  listeners.forEach((l) => l())
+}
+
+export function getLang(): Lang {
+  return current
+}
+
+export function useLang(): Lang {
+  return useSyncExternalStore(
+    (l) => {
+      listeners.add(l)
+      return () => listeners.delete(l)
+    },
+    () => current,
+  )
+}
+
+export type T = (key: Key, vars?: Record<string, string | number>) => string
+
+export function translate(lang: Lang, key: Key, vars?: Record<string, string | number>): string {
+  let s = dicts[lang][key] ?? en[key]
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v))
+  return s
+}
+
+export function useT(): T {
+  const lang = useLang()
+  return useCallback<T>((key, vars) => translate(lang, key, vars), [lang])
+}
+
+document.documentElement.lang = current
