@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { playerForm, type PlayerForm } from '../analysis/form'
-import { deleteArchived, exportArchive, importArchive, loadAll, restoreArchived, useArchive, type ArchiveMeta } from '../archive'
+import { deleteArchived, exportArchive, importArchive, loadAll, maintainArchive, restoreArchived, useArchive, type ArchiveMeta } from '../archive'
 import { useLang, type Lang, type T } from '../i18n'
 import { fixed, int, pct } from '../lib/format'
 import { toast } from '../lib/toast'
@@ -22,6 +22,10 @@ export function ArchivePage({ t }: { t: T }) {
   const { index, loaded } = useArchive()
   const [tab, setTab] = useState<'sessions' | 'form'>('sessions')
   const file = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    maintainArchive().catch((e) => console.error(e))
+  }, [])
 
   const onExport = async () => {
     download(await exportArchive(), `blitz-archive-${new Date().toISOString().slice(0, 10)}.json`)
@@ -69,7 +73,7 @@ export function ArchivePage({ t }: { t: T }) {
       </nav>
 
       {tab === 'sessions' && loaded && (index.length ? <SessionList index={index} t={t} lang={lang} /> : <Panel><p className="muted prose">{t('archiveEmpty')}</p></Panel>)}
-      {tab === 'form' && <FormView count={index.length} t={t} />}
+      {tab === 'form' && <FormView index={index} t={t} />}
     </div>
   )
 }
@@ -125,21 +129,22 @@ function SessionList({ index, t, lang }: { index: ArchiveMeta[]; t: T; lang: Lan
   )
 }
 
-function FormView({ count, t }: { count: number; t: T }) {
+function FormView({ index, t }: { index: ArchiveMeta[]; t: T }) {
   const [rows, setRows] = useState<PlayerForm[] | null>(null)
   // null = not chosen yet: filter to regulars only when there are any.
   const [regularsChoice, setRegulars] = useState<boolean | null>(null)
 
   useEffect(() => {
     let live = true
+    // Any save, delete or import produces a new index, so the form follows every change.
     loadAll().then((all) => live && setRows(playerForm(all)))
     return () => {
       live = false
     }
-  }, [count])
+  }, [index])
 
   if (!rows) return null
-  if (count < 2 || !rows.length) return <Panel><p className="muted prose">{t('formEmpty')}</p></Panel>
+  if (index.length < 2 || !rows.length) return <Panel><p className="muted prose">{t('formEmpty')}</p></Panel>
   const hasRegulars = rows.some((r) => r.points.length >= 2)
   const regulars = regularsChoice ?? hasRegulars
   const shown = regulars ? rows.filter((r) => r.points.length >= 2) : rows

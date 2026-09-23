@@ -1975,6 +1975,17 @@ textarea.input {
   gap: 6px;
 }
 
+.archived-chip {
+  margin-left: 0;
+  padding: 3px 10px;
+  border: 1px solid rgb(245 165 36 / 0.4);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
 .check {
   display: inline-flex;
   align-items: center;

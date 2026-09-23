@@ -138,8 +138,10 @@ test('archive keeps sessions, reopens them and backs them up', async ({ page }) 
   // Session 2 is saved explicitly with a title.
   await upload(page, RANDOMS)
   await page.locator('.title-input').fill('Evening randoms')
-  await page.getByRole('button', { name: 'Save to archive' }).click()
-  await expect(page.getByText('Saved to archive')).toBeVisible()
+  // A double click must not create two entries.
+  await page.getByRole('button', { name: 'Save to archive' }).dblclick()
+  await expect(page.getByText('Saved to archive').first()).toBeVisible()
+  await expect(page.locator('.archived-chip')).toBeVisible()
 
   await page.getByRole('link', { name: /Archive/ }).click()
   const items = page.locator('.archive-list li')
@@ -152,8 +154,11 @@ test('archive keeps sessions, reopens them and backs them up', async ({ page }) 
 
   // Player form across both sessions.
   await page.getByRole('link', { name: /Archive/ }).click()
+  const overflow = () => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
+  expect(await overflow()).toBeLessThanOrEqual(0)
   await page.getByRole('tab', { name: 'Player form' }).click()
   await expect(page.locator('.archive .grid tbody tr').first()).toBeVisible()
+  expect(await overflow()).toBeLessThanOrEqual(0)
 
   // Backup: export, wipe, import.
   await page.getByRole('tab', { name: /Sessions/ }).click()

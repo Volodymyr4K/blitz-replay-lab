@@ -6,7 +6,8 @@ import type { T } from '../i18n'
 import { exportExcel } from '../lib/excel'
 import { fixed, int, pct } from '../lib/format'
 import { toast } from '../lib/toast'
-import { updateSession, type FileError } from '../store'
+import { useArchive } from '../archive'
+import { updateSession, useStore, type FileError } from '../store'
 import { archiveAndClear, archiveCurrent } from './archiveActions'
 import { Bpr, Clan, Panel } from './bits'
 import { BprTrend, ClassMix, CompareRow, TopPlayers } from './charts'
@@ -50,6 +51,9 @@ function buildSummary(a: Analysis, mode: Mode, t: T): string[] {
 
 export function Workspace({ analysis: a, mode, title, t, local }: Props) {
   const [tab, setTab] = useState<Tab>('overview')
+  const { session } = useStore()
+  const { index } = useArchive()
+  const fromArchive = !!local && !!session.archiveId && index.some((m) => m.id === session.archiveId)
   const [open, setOpen] = useState<PlayerRow | null>(null)
   const total = a.record.win + a.record.loss + a.record.draw
   const summary = useMemo(() => buildSummary(a, mode, t), [a, mode, t])
@@ -89,6 +93,11 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
       {local && (
         <div className="toolbar">
           <input className="input title-input" aria-label={t('sessionTitle')} placeholder={t('sessionTitlePh')} value={title} onChange={(e) => updateSession({ title: e.target.value })} />
+          {fromArchive && (
+            <a className="hint-chip archived-chip" href="#/archive" title={t('fromArchiveHint')}>
+              {t('fromArchive')}
+            </a>
+          )}
           <div className="segmented" role="radiogroup" title={t('modeHint')}>
             {(['scrim', 'individual'] as const).map((m) => (
               <button key={m} role="radio" aria-checked={mode === m} className={mode === m ? 'on' : ''} onClick={() => updateSession({ mode: m })}>

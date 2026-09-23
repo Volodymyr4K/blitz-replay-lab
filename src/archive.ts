@@ -8,11 +8,13 @@
 import { useSyncExternalStore } from 'react'
 import { analyze, mvp, type Outcome, type StoredBattle } from './analysis/analyze'
 import type { Mode } from './analysis/share'
-import { db } from './lib/db'
+import { db, type WriteOp } from './lib/db'
 import { sanitizeSession, type Session } from './store'
 
 export interface ArchiveMeta {
   id: string
+  /** Summary format; older ones are recomputed from the battles. */
+  v: number
   /** User-given title; empty means "derive one from the date and opponent". */
   title: string
   mode: Mode
@@ -23,7 +25,7 @@ export interface ArchiveMeta {
   battles: number
   record: Record<Outcome, number>
   ourAvgBpr: number
-  /** Most frequent clan tag on the enemy side, weighted by battles. */
+  /** The opposing clan in a scrim, when one clan clearly dominates the enemy side. */
   enemyClan: string | null
   mvp: string | null
 }
@@ -38,6 +40,9 @@ const INDEX_KEY = 'archive:index'
 const entryKey = (id: string) => `archive:${id}`
 const EXPORT_KIND = 'blitz-replay-lab/archive'
 const EXPORT_VERSION = 1
+/** Bump when summarize() changes so stored summaries get recomputed. */
+export const SUMMARY_VERSION = 2
+const MAX_IMPORT_BYTES = 50 * 1024 * 1024
 
 // ---------- index state (shared across components and tabs) ----------
 
@@ -53,13 +58,24 @@ function emit(next: ArchiveMeta[]) {
 }
 
 async function readIndex(): Promise<ArchiveMeta[]> {
-  const raw = await db.get<unknown>(INDEX_KEY).catch(() => undefined)
-  return Array.isArray(raw) ? raw.filter(isMeta) : []
+  return indexOf(await db.get<unknown>(INDEX_KEY).catch(() => undefined))
 }
 
-async function writeIndex(next: ArchiveMeta[]) {
-  await db.set(INDEX_KEY, next)
-  emit(next)
+// A summary with a missing or odd `v` (saved before versioning) counts as version 1 and is refreshed.
+const indexOf = (raw: unknown): ArchiveMeta[] =>
+  Array.isArray(raw) ? raw.map((m) => (m && typeof m === 'object' && !isNum((m as { v?: unknown }).v) ? { ...m, v: 1 } : m)).filter(isMeta) : []
+
+/** Every ID the stored index mentions, valid summary or not — data behind these is never pruned. */
+const referencedIds = (raw: unknown): Set<string> =>
+  new Set(Array.isArray(raw) ? raw.map((m) => (m && typeof m === 'object' ? (m as { id?: unknown }).id : undefined)).filter((id): id is string => typeof id === 'string') : [])
+
+/**
+ * Change the index and entries in one transaction, so concurrent saves (double clicks,
+ * other tabs) can neither lose an entry nor leave the index pointing at missing data.
+ */
+async function commit(ops: WriteOp[], change: (index: ArchiveMeta[]) => ArchiveMeta[]) {
+  await db.write([...ops, { update: INDEX_KEY, fn: (raw) => change(indexOf(raw)) }])
+  emit(await readIndex())
   channel?.postMessage('changed')
 }
 
@@ -90,6 +106,7 @@ function isMeta(m: unknown): m is ArchiveMeta {
   const r = x.record as Record<string, unknown> | undefined
   return (
     typeof x.id === 'string' &&
+    isNum(x.v) &&
     typeof x.title === 'string' &&
     (x.mode === 'scrim' || x.mode === 'individual') &&
     [x.savedAt, x.from, x.to, x.battles, x.ourAvgBpr].every(isNum) &&
@@ -105,12 +122,20 @@ function isMeta(m: unknown): m is ArchiveMeta {
 /** Build the index record for a session; also used to refresh it after edits. */
 export function summarize(id: string, s: Pick<Session, 'battles' | 'roster' | 'mode' | 'title'>, savedAt = Date.now()): ArchiveMeta {
   const a = analyze(s.battles, { roster: s.roster })
+  // Randoms have strangers on the other side; only name an opponent in a scrim where one
+  // clan fills at least half of the enemy slots.
   const clans = new Map<string, number>()
-  for (const p of a.enemy) if (p.clan) clans.set(p.clan, (clans.get(p.clan) ?? 0) + p.battles)
-  const enemyClan = [...clans].sort((x, y) => y[1] - x[1])[0]?.[0] ?? null
+  let enemySlots = 0
+  for (const p of a.enemy) {
+    enemySlots += p.battles
+    if (p.clan) clans.set(p.clan, (clans.get(p.clan) ?? 0) + p.battles)
+  }
+  const [topClan, topSlots = 0] = [...clans].sort((x, y) => y[1] - x[1])[0] ?? []
+  const enemyClan = s.mode === 'scrim' && topClan && topSlots * 2 >= enemySlots ? topClan : null
   const times = s.battles.map((b) => b.timestamp).filter((t) => t > 0)
   return {
     id,
+    v: SUMMARY_VERSION,
     title: s.title.trim(),
     mode: s.mode,
     savedAt,
@@ -124,17 +149,17 @@ export function summarize(id: string, s: Pick<Session, 'battles' | 'roster' | 'm
   }
 }
 
-const newId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`)
+export const newArchiveId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`)
 
 // ---------- operations ----------
 
-/** Save a session (new, or over the entry it was opened from). Returns its index record. */
-export async function saveToArchive(s: Session): Promise<ArchiveMeta> {
-  const id = s.archiveId ?? newId()
-  const meta = summarize(id, s)
-  await db.set(entryKey(id), { battles: s.battles, roster: s.roster })
-  const current = await readIndex()
-  await writeIndex([...current.filter((m) => m.id !== id), meta])
+/**
+ * Save a session over its archive entry (it must already carry an archiveId, assigned by the
+ * caller before the first await so repeated clicks update one entry). Returns the summary.
+ */
+export async function saveToArchive(s: Session & { archiveId: string }): Promise<ArchiveMeta> {
+  const meta = summarize(s.archiveId, s)
+  await commit([{ put: entryKey(meta.id), value: { battles: s.battles, roster: s.roster } }], (index) => [...index.filter((m) => m.id !== meta.id), meta])
   return meta
 }
 
@@ -149,14 +174,42 @@ export async function loadArchived(id: string): Promise<ArchivedSession | null> 
 /** Remove an entry; the returned copy can be passed to restoreArchived() to undo. */
 export async function deleteArchived(id: string): Promise<ArchivedSession | null> {
   const entry = await loadArchived(id)
-  await db.del(entryKey(id))
-  await writeIndex((await readIndex()).filter((m) => m.id !== id))
+  await commit([{ del: entryKey(id) }], (index) => index.filter((m) => m.id !== id))
   return entry
 }
 
 export async function restoreArchived(entry: ArchivedSession) {
-  await db.set(entryKey(entry.meta.id), { battles: entry.battles, roster: entry.roster })
-  await writeIndex([...(await readIndex()).filter((m) => m.id !== entry.meta.id), entry.meta])
+  const { meta } = entry
+  await commit([{ put: entryKey(meta.id), value: { battles: entry.battles, roster: entry.roster } }], (index) => [...index.filter((m) => m.id !== meta.id), meta])
+}
+
+/**
+ * Housekeeping, run when the archive is opened: recompute summaries written by an older
+ * version, and drop entry data that no index record points to (left by interrupted writes
+ * of earlier versions). Orphans are found inside the transaction, against the index as it
+ * is at that moment, so a session another tab is saving right now is never mistaken for one.
+ */
+export async function maintainArchive() {
+  const refreshed: ArchiveMeta[] = []
+  for (const m of (await readIndex()).filter((x) => x.v !== SUMMARY_VERSION)) {
+    const entry = await loadArchived(m.id)
+    if (entry) refreshed.push(summarize(m.id, { battles: entry.battles, roster: entry.roster, mode: m.mode, title: m.title }, m.savedAt))
+  }
+  const byId = new Map(refreshed.map((m) => [m.id, m]))
+  const pruneOrphans: WriteOp = {
+    run: (store) => {
+      const idx = store.get(INDEX_KEY)
+      idx.onsuccess = () => {
+        const known = new Set([...referencedIds(idx.result)].map(entryKey))
+        const keys = store.getAllKeys()
+        keys.onsuccess = () => {
+          for (const k of keys.result) if (typeof k === 'string' && k.startsWith('archive:') && k !== INDEX_KEY && !known.has(k)) store.delete(k)
+        }
+      }
+    },
+  }
+  // The index update runs after the prune in the same transaction.
+  await commit([pruneOrphans], (index) => index.map((m) => byId.get(m.id) ?? m))
 }
 
 export async function loadAll(): Promise<ArchivedSession[]> {
@@ -184,6 +237,7 @@ export interface ImportResult {
  * they are; every battle is re-validated, and summaries are rebuilt rather than trusted.
  */
 export async function importArchive(text: string): Promise<ImportResult> {
+  if (text.length > MAX_IMPORT_BYTES) throw new Error('not_backup')
   let payload: unknown
   try {
     payload = JSON.parse(text)
@@ -196,6 +250,7 @@ export async function importArchive(text: string): Promise<ImportResult> {
   const current = await readIndex()
   const known = new Set(current.map((m) => m.id))
   const added: ArchiveMeta[] = []
+  const ops: WriteOp[] = []
   let skipped = 0
   let invalid = 0
   for (const raw of p.sessions) {
@@ -211,10 +266,12 @@ export async function importArchive(text: string): Promise<ImportResult> {
       continue
     }
     known.add(id)
-    const meta = summarize(id, clean, isNum(e.meta?.savedAt) ? e.meta.savedAt : Date.now())
-    await db.set(entryKey(id), { battles: clean.battles, roster: clean.roster })
-    added.push(meta)
+    added.push(summarize(id, clean, isNum(e.meta?.savedAt) ? e.meta.savedAt : Date.now()))
+    ops.push({ put: entryKey(id), value: { battles: clean.battles, roster: clean.roster } })
   }
-  if (added.length) await writeIndex([...current, ...added])
+  if (added.length) {
+    const ids = new Set(added.map((m) => m.id))
+    await commit(ops, (index) => [...index.filter((m) => !ids.has(m.id)), ...added])
+  }
   return { added: added.length, skipped, invalid }
 }
