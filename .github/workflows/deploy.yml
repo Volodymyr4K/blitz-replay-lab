@@ -8,50 +8,76 @@ on:
     - cron: '0 6 1 * *'
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pages: write
-  id-token: write
+# Nothing gets write access by default; each job asks for exactly what it needs.
+permissions: {}
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # Never cut a Pages deployment off halfway; queue the next one instead.
+  cancel-in-progress: false
 
 jobs:
-  build:
+  # The only job that can push. It runs no npm install: the script uses Node built-ins only,
+  # so no third-party package code ever runs next to a write token.
+  update-data:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-
-      - name: Refresh game data
-        if: github.event_name != 'push'
+          node-version-file: .nvmrc
+      - run: node scripts/update-data.mjs
+      - name: Commit changes
         run: |
-          npm run update-data
-          if ! git diff --quiet src/data; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -am "Update tank and map data"
-            git push
+          if git diff --quiet src/data; then
+            echo "Game data unchanged."
+            exit 0
           fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Update tank and map data"
+          git push
 
+  build:
+    needs: update-data
+    # Runs after update-data, or on its own when that job is skipped (push events).
+    if: always() && needs.update-data.result != 'failure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Branch head, so a scheduled run builds the data commit made just before.
+          ref: ${{ github.ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      # Dependency install scripts are not needed to build and never run here.
+      - run: npm ci --ignore-scripts
+      - run: npm run lint
       - run: npm test
       - run: npm run build
-      - uses: actions/configure-pages@v6
-      - uses: actions/upload-pages-artifact@v5
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: dist
 
   deploy:
     needs: build
+    if: always() && needs.build.result == 'success'
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
