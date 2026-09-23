@@ -43,7 +43,7 @@ export function PlayerModal({
             {row.nick} <Clan tag={row.clan} />
           </h2>
           <p className="muted">
-            {row.mainTank} · {t('colBattles')}: {row.battles}
+            {row.mainTank} · {t('battlesN', { n: row.battles })}
           </p>
         </div>
         <Bpr value={row.bpr} size="lg" />
@@ -94,7 +94,7 @@ export function PlayerModal({
             {tanks.map((tk) => (
               <tr key={tk.id}>
                 <td className="left">
-                  {tk.info.type && <span className={`cls cls-${tk.info.type}`}>{tk.info.type}</span>} {tk.info.name}
+                  {tk.info.type && <span className={`cls cls-${tk.info.type}`}>{t(`cls${tk.info.type}`)}</span>} {tk.info.name}
                   {tk.info.tier > 0 && <span className="muted"> · {roman(tk.info.tier)}</span>}
                 </td>
                 <td>{tk.battles}</td>
@@ -113,7 +113,7 @@ export function PlayerModal({
         <h3>{t('modalBattles')}</h3>
         {battles ? (
           <>
-            {battles.length > 1 && <BprTrend points={battles.map((b) => ({ v: b.row.bpr, outcome: b.outcome }))} />}
+            {battles.length > 1 && <BprTrend label={t('bprTrendLabel')} points={battles.map((b) => ({ v: b.row.bpr, outcome: b.outcome }))} />}
             <table className="grid compact">
               <thead>
                 <tr>

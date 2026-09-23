@@ -38,8 +38,8 @@ export function ClassMix({ our, enemy, t }: { our: PlayerRow; enemy: PlayerRow; 
               {total ? (
                 (['HT', 'MT', 'LT', 'TD'] as const).map((c) =>
                   mix[c] ? (
-                    <span key={c} className={`seg cls-bg-${c}`} style={{ flexGrow: mix[c] }} title={`${c}: ${mix[c]}`}>
-                      {mix[c] / total >= 0.1 ? `${c} ${Math.round((mix[c] / total) * 100)}%` : ''}
+                    <span key={c} className={`seg cls-bg-${c}`} style={{ flexGrow: mix[c] }} title={`${t(`cls${c}`)}: ${mix[c]}`}>
+                      {mix[c] / total >= 0.1 ? `${t(`cls${c}`)} ${Math.round((mix[c] / total) * 100)}%` : ''}
                     </span>
                   ) : null,
                 )
@@ -76,7 +76,7 @@ export function TopPlayers({ rows, onOpen }: { rows: PlayerRow[]; onOpen: (r: Pl
 }
 
 /** Per-battle BPR columns; colour shows the battle outcome, the dashed line marks 1.0. */
-export function BprTrend({ points }: { points: { v: number; outcome: Outcome }[] }) {
+export function BprTrend({ points, label }: { points: { v: number; outcome: Outcome }[]; label: string }) {
   const max = Math.max(1.5, ...points.map((p) => p.v))
   const min = Math.min(0, ...points.map((p) => p.v))
   const w = 600
@@ -85,7 +85,7 @@ export function BprTrend({ points }: { points: { v: number; outcome: Outcome }[]
   const slot = w / Math.max(points.length, 12)
   const bw = Math.min(slot * 0.7, 28)
   return (
-    <svg className="trend" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img" aria-label="BPR trend">
+    <svg className="trend" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img" aria-label={label}>
       <line x1={0} x2={w} y1={y(1)} y2={y(1)} className="trend-ref" />
       <line x1={0} x2={w} y1={y(0)} y2={y(0)} className="trend-base" />
       {points.map((p, i) => (

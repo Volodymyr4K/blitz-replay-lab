@@ -102,6 +102,6 @@ describe('tank data', () => {
     expect(tankInfo(28689)).toEqual({ name: 'Rhm. Pzw.', type: 'LT', tier: 10 })
     expect(tankInfo(20097).type).toBe('HT')
     expect(tankInfo(1)).toEqual({ name: 'T-34', type: 'MT', tier: 5 })
-    expect(tankInfo(999999)).toEqual({ name: 'Tank #999999', type: '', tier: 0 })
+    expect(tankInfo(999999)).toEqual({ name: '#999999', type: '', tier: 0 })
   })
 })

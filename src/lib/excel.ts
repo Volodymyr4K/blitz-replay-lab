@@ -1,42 +1,44 @@
 import type { Analysis, PlayerRow } from '../analysis/analyze'
+import type { Key, T } from '../i18n'
 
-const COLUMNS: { header: string; width: number; value: (r: PlayerRow) => string | number }[] = [
-  { header: 'Account ID', width: 13, value: (r) => r.id },
-  { header: 'Nickname', width: 22, value: (r) => r.nick },
-  { header: 'Clan', width: 9, value: (r) => r.clan ?? '' },
-  { header: 'Battles', width: 8, value: (r) => r.battles },
-  { header: 'Wins', width: 7, value: (r) => r.wins },
-  { header: 'Win rate %', width: 10, value: (r) => round(r.winRate * 100, 1) },
-  { header: 'HT', width: 5, value: (r) => r.classes.HT },
-  { header: 'MT', width: 5, value: (r) => r.classes.MT },
-  { header: 'LT', width: 5, value: (r) => r.classes.LT },
-  { header: 'TD', width: 5, value: (r) => r.classes.TD },
-  { header: 'Main tank', width: 20, value: (r) => r.mainTank },
-  { header: 'ADR', width: 8, value: (r) => round(r.adr) },
-  { header: 'Frags', width: 7, value: (r) => r.frags },
-  { header: 'KPR', width: 7, value: (r) => round(r.kpr) },
-  { header: 'DE', width: 7, value: (r) => round(r.de) },
-  { header: 'Assist', width: 8, value: (r) => round(r.assistAvg) },
-  { header: 'Blocked', width: 8, value: (r) => round(r.blockedAvg) },
-  { header: 'Shots', width: 7, value: (r) => r.shots },
-  { header: 'Hits', width: 7, value: (r) => r.hits },
-  { header: 'Pens', width: 7, value: (r) => r.pens },
-  { header: 'AccH %', width: 8, value: (r) => round(r.accH * 100) },
-  { header: 'AccP %', width: 8, value: (r) => round(r.accP * 100) },
-  { header: 'iPoints', width: 8, value: (r) => round(r.iPointsAvg) },
-  { header: 'sPoints', width: 8, value: (r) => round(r.sPointsAvg) },
-  { header: 'Firepower', width: 10, value: (r) => round(r.firepower) },
-  { header: 'AIM', width: 8, value: (r) => round(r.aim) },
-  { header: 'Support', width: 9, value: (r) => round(r.support) },
-  { header: 'Supremacy', width: 10, value: (r) => round(r.supremacy) },
-  { header: 'BPR 2.0', width: 9, value: (r) => round(r.bpr) },
+/** Headers reuse the on-screen column labels, so the sheet matches the UI language. */
+const COLUMNS: { header: Key; width: number; value: (r: PlayerRow) => string | number }[] = [
+  { header: 'colId', width: 13, value: (r) => r.id },
+  { header: 'colPlayer', width: 22, value: (r) => r.nick },
+  { header: 'colClan', width: 9, value: (r) => r.clan ?? '' },
+  { header: 'colBattles', width: 8, value: (r) => r.battles },
+  { header: 'colWins', width: 8, value: (r) => r.wins },
+  { header: 'colWr', width: 8, value: (r) => round(r.winRate * 100, 1) },
+  { header: 'clsHT', width: 5, value: (r) => r.classes.HT },
+  { header: 'clsMT', width: 5, value: (r) => r.classes.MT },
+  { header: 'clsLT', width: 5, value: (r) => r.classes.LT },
+  { header: 'clsTD', width: 5, value: (r) => r.classes.TD },
+  { header: 'colTank', width: 20, value: (r) => r.mainTank },
+  { header: 'colAdr', width: 8, value: (r) => round(r.adr) },
+  { header: 'colFrags', width: 7, value: (r) => r.frags },
+  { header: 'colKpr', width: 9, value: (r) => round(r.kpr) },
+  { header: 'colDe', width: 9, value: (r) => round(r.de) },
+  { header: 'colAssist', width: 8, value: (r) => round(r.assistAvg) },
+  { header: 'colBlocked', width: 8, value: (r) => round(r.blockedAvg) },
+  { header: 'colShots', width: 8, value: (r) => r.shots },
+  { header: 'colHits', width: 8, value: (r) => r.hits },
+  { header: 'colPens', width: 8, value: (r) => r.pens },
+  { header: 'colAccH', width: 8, value: (r) => round(r.accH * 100) },
+  { header: 'colAccP', width: 8, value: (r) => round(r.accP * 100) },
+  { header: 'colIPoints', width: 10, value: (r) => round(r.iPointsAvg) },
+  { header: 'colSPoints', width: 10, value: (r) => round(r.sPointsAvg) },
+  { header: 'colFirepower', width: 10, value: (r) => round(r.firepower) },
+  { header: 'colAim', width: 9, value: (r) => round(r.aim) },
+  { header: 'colSupport', width: 10, value: (r) => round(r.support) },
+  { header: 'colSupremacy', width: 10, value: (r) => round(r.supremacy) },
+  { header: 'colBpr', width: 9, value: (r) => round(r.bpr) },
 ]
 
 const round = (v: number, d = 2) => Math.round(v * 10 ** d) / 10 ** d
 
-function sheet(rows: PlayerRow[], name: string, headerColor: string) {
+function sheet(rows: PlayerRow[], name: string, headerColor: string, t: T) {
   const header = COLUMNS.map((c) => ({
-    value: c.header,
+    value: t(c.header),
     fontWeight: 'bold' as const,
     textColor: '#FFFFFF',
     backgroundColor: headerColor,
@@ -51,9 +53,9 @@ function sheet(rows: PlayerRow[], name: string, headerColor: string) {
   }
 }
 
-export async function exportExcel(a: Analysis, fileName: string) {
+export async function exportExcel(a: Analysis, fileName: string, t: T) {
   const { default: writeExcelFile } = await import('write-excel-file/browser')
-  const blob = await writeExcelFile([sheet(a.our, 'Our team', '#E8A33D'), sheet(a.enemy, 'Enemy team', '#4B5563')]).toBlob()
+  const blob = await writeExcelFile([sheet(a.our, t('ourTeam'), '#E8A33D', t), sheet(a.enemy, t('enemyTeam'), '#4B5563', t)]).toBlob()
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url

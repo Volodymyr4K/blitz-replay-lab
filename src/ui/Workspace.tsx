@@ -102,7 +102,7 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
             <button
               className="btn"
               onClick={async () => {
-                await exportExcel(a, title)
+                await exportExcel(a, title, t)
                 toast(t('exportDone'))
               }}
             >
@@ -124,7 +124,7 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
       {local && <Dropzone compact />}
 
       <div className="stat-strip">
-        <Stat label={t('statRecord')} value={`${a.record.win}–${a.record.loss}–${a.record.draw}`} sub={`${t('statBattles')}: ${total}`} />
+        <Stat label={t('statRecord')} value={`${a.record.win}–${a.record.loss}–${a.record.draw}`} sub={t('battlesN', { n: total })} />
         <Stat label={t('statWinRate')} value={total ? pct(a.record.win / total) : '—'} />
         <Stat label={t('statOurBpr')} value={<Bpr value={a.ourAvgBpr} />} />
         <Stat label={t('statEnemyBpr')} value={<Bpr value={a.enemyAvgBpr} />} />
@@ -153,7 +153,7 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
                     {focus.nick} <Clan tag={focus.clan} />
                   </h3>
                   <p className="muted">
-                    {t('colBattles')}: {focus.battles} · {t('colWr')} {pct(focus.winRate)} · {focus.mainTank}
+                    {t('battlesN', { n: focus.battles })} · {t('colWr')} {pct(focus.winRate)} · {focus.mainTank}
                   </p>
                 </div>
               </div>
@@ -175,7 +175,7 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
               {focusBattles && focusBattles.length > 1 && (
                 <>
                   <h4>{t('bprTrend')}</h4>
-                  <BprTrend points={focusBattles.map((b) => ({ v: b.row.bpr, outcome: b.outcome }))} />
+                  <BprTrend label={t('bprTrendLabel')} points={focusBattles.map((b) => ({ v: b.row.bpr, outcome: b.outcome }))} />
                 </>
               )}
               <h4>{t('byTank')}</h4>

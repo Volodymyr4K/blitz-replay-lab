@@ -63,7 +63,7 @@ export default function App() {
             {t('navGuide')}
           </a>
         </nav>
-        <div className="lang" role="group" aria-label="Language">
+        <div className="lang" role="group" aria-label={t('languageLabel')}>
           {(['uk', 'en'] as Lang[]).map((l) => (
             <button key={l} className={lang === l ? 'on' : ''} onClick={() => setLang(l)}>
               {l.toUpperCase()}

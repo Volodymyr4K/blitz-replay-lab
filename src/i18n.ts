@@ -2,6 +2,14 @@ import { useCallback, useSyncExternalStore } from 'react'
 
 export type Lang = 'uk' | 'en'
 
+/** Plural forms per Intl.PluralRules; Ukrainian needs one/few/many, English one/other. */
+export interface Plural {
+  one: string
+  few?: string
+  many?: string
+  other: string
+}
+
 const en = {
   tagline: 'WoT Blitz replay analyzer',
   navAnalyzer: 'Analyzer',
@@ -36,9 +44,9 @@ const en = {
   undo: 'Undo',
 
   parsing: 'Reading replays… {done}/{total}',
-  addedN: 'Added {n} battle(s)',
-  dupN: '{n} duplicate(s) skipped',
-  failedN: '{n} file(s) could not be read',
+  addedN: { one: 'Added {n} battle', other: 'Added {n} battles' },
+  dupN: { one: '{n} duplicate skipped', other: '{n} duplicates skipped' },
+  failedN: { one: '{n} file could not be read', other: '{n} files could not be read' },
   notReplays: 'Only .wotbreplay files are supported',
   storageFull: 'Could not save the session in this browser (storage full or disabled) — it will be lost on reload. Share or export it to keep it.',
 
@@ -62,6 +70,9 @@ const en = {
   enemyTeam: 'Enemy team',
   avgBpr: 'avg BPR',
   showAll: 'Show all {n}',
+  languageLabel: 'Language',
+  bprTrendLabel: 'BPR per battle; green win, red loss, dashed line 1.00',
+  unknownMap: 'Map #{id}',
   showLess: 'Show fewer',
   vs: 'VS',
   teamCompare: 'Team comparison',
@@ -79,7 +90,7 @@ const en = {
   sumMvp: 'MVP: {nick} — {bpr} BPR, {adr} ADR on {tank}.',
   sumFocusStructure: 'Focus: keep the structure — trades are working.',
   sumFocusFire: 'Focus: tighten focus fire and trade HP more carefully.',
-  sumYou: '{nick}: {bpr} BPR, {adr} ADR, {kpr} KPR over {n} battle(s).',
+  sumYou: { one: '{nick}: {bpr} BPR, {adr} ADR, {kpr} KPR in {n} battle.', other: '{nick}: {bpr} BPR, {adr} ADR, {kpr} KPR over {n} battles.' },
   sumNext: 'Next target: {adr}+ ADR. Accuracy {h}% hit / {p}% pen.',
   sumSupport: 'Work on support: more spotting/assist and blocked damage.',
   sumDamage: 'Work on damage output — support numbers are already solid.',
@@ -92,7 +103,8 @@ const en = {
   search: 'Search player…',
   minBattles: 'Min. battles',
   columns: 'Columns',
-  playersN: '{n} player(s)',
+  playersN: { one: '{n} player', other: '{n} players' },
+  battlesN: { one: '{n} battle', other: '{n} battles' },
   noPlayers: 'No players found',
 
   colRank: '#',
@@ -122,6 +134,12 @@ const en = {
   colXp: 'XP',
   colClasses: 'HT/MT/LT/TD',
   colId: 'Account ID',
+  colClan: 'Clan',
+  colWins: 'Wins',
+  clsHT: 'HT',
+  clsMT: 'MT',
+  clsLT: 'LT',
+  clsTD: 'TD',
 
   battleDate: 'Date',
   battleMap: 'Map',
@@ -143,7 +161,7 @@ const en = {
     'By default “our team” is the team of whoever recorded the replay. If replays come from different players (or from the enemy), list your players here — one nickname per line — or your clan tag in brackets like [CLAN]. Each battle is then assigned to the team with more roster members.',
   rosterPh: 'nickname_1\nnickname_2\n[CLAN]',
   rosterImport: 'Import from Excel / CSV / TXT',
-  rosterImported: 'Imported {n} name(s)',
+  rosterImported: { one: 'Imported {n} name', other: 'Imported {n} names' },
   rosterSaved: 'Roster saved',
   rosterClear: 'Clear',
   save: 'Save',
@@ -165,7 +183,10 @@ const en = {
   shareOpen: 'Open',
   shareTrimmed: 'The session is large, so the battle-by-battle list was left out to keep the link short enough for Discord. Totals and ratings are complete.',
   shareTrimmedTanks: 'Per-tank results were left out too; tanks and battle counts are kept.',
-  shareTrimmedPlayers: '{n} player(s) with a single battle were left out; team totals and averages still include them.',
+  shareTrimmedPlayers: {
+    one: '{n} player with a single battle was left out; team totals and averages still include them.',
+    other: '{n} players with a single battle were left out; team totals and averages still include them.',
+  },
   battlesOmitted: 'The battle list was left out of this link to keep it short. The record and all player stats are complete.',
   shareTooLong: 'Link is {n} characters — over Discord’s 2000 limit without Nitro. Telegram and most other chats are fine.',
   exportDone: 'Excel file saved',
@@ -213,10 +234,13 @@ const en = {
     'Share links contain the aggregated report itself (nicknames, account IDs and stats), compressed into the URL. Anyone with the link can read it, and a link cannot be revoked. The site does not verify a shared report — treat it like a screenshot from whoever sent it.',
 
   footerCredit: 'Replay format research: eigenein/wotbreplay-parser. BPR 2.0: BlitzScrim. Not affiliated with Wargaming.',
-}
+} satisfies Record<string, string | Plural>
 
-export type Dict = typeof en
-export type Key = keyof Dict
+export type Key = keyof typeof en
+
+/** Every translation key, for consistency checks. */
+export const KEYS = Object.keys(en) as Key[]
+export type Dict = Record<Key, string | Plural>
 
 const uk: Dict = {
   tagline: 'Аналізатор реплеїв WoT Blitz',
@@ -252,9 +276,9 @@ const uk: Dict = {
   undo: 'Повернути',
 
   parsing: 'Читаю реплеї… {done}/{total}',
-  addedN: 'Додано боїв: {n}',
-  dupN: 'Пропущено дублікатів: {n}',
-  failedN: 'Не вдалося прочитати файлів: {n}',
+  addedN: { one: 'Додано {n} бій', few: 'Додано {n} бої', many: 'Додано {n} боїв', other: 'Додано {n} бою' },
+  dupN: { one: 'Пропущено {n} дублікат', few: 'Пропущено {n} дублікати', many: 'Пропущено {n} дублікатів', other: 'Пропущено {n} дубліката' },
+  failedN: { one: 'Не вдалося прочитати {n} файл', few: 'Не вдалося прочитати {n} файли', many: 'Не вдалося прочитати {n} файлів', other: 'Не вдалося прочитати {n} файлу' },
   notReplays: 'Підтримуються лише файли .wotbreplay',
   storageFull: 'Не вдалося зберегти сесію в браузері (сховище заповнене або вимкнене) — після перезавантаження вона зникне. Щоб зберегти, поділись нею або експортуй.',
 
@@ -278,6 +302,9 @@ const uk: Dict = {
   enemyTeam: 'Суперники',
   avgBpr: 'сер. BPR',
   showAll: 'Показати всіх ({n})',
+  languageLabel: 'Мова',
+  bprTrendLabel: 'BPR за кожен бій; зелений — перемога, червоний — поразка, пунктир — 1.00',
+  unknownMap: 'Мапа #{id}',
   showLess: 'Згорнути',
   vs: 'VS',
   teamCompare: 'Порівняння команд',
@@ -295,7 +322,12 @@ const uk: Dict = {
   sumMvp: 'MVP: {nick} — {bpr} BPR, {adr} шкоди на {tank}.',
   sumFocusStructure: 'Фокус: тримайте структуру — розміни працюють.',
   sumFocusFire: 'Фокус: більше фокус-вогню і акуратніші розміни ХП.',
-  sumYou: '{nick}: {bpr} BPR, {adr} шкоди, {kpr} фрагів за бій ({n} боїв).',
+  sumYou: {
+    one: '{nick}: {bpr} BPR, {adr} шкоди, {kpr} фрагів за бій ({n} бій).',
+    few: '{nick}: {bpr} BPR, {adr} шкоди, {kpr} фрагів за бій ({n} бої).',
+    many: '{nick}: {bpr} BPR, {adr} шкоди, {kpr} фрагів за бій ({n} боїв).',
+    other: '{nick}: {bpr} BPR, {adr} шкоди, {kpr} фрагів за бій ({n} бою).',
+  },
   sumNext: 'Наступна ціль: {adr}+ шкоди. Точність: {h}% влучань / {p}% пробиттів.',
   sumSupport: 'Попрацюй над підтримкою: більше засвіту/асисту і заблокованої шкоди.',
   sumDamage: 'Попрацюй над шкодою — з підтримкою вже все добре.',
@@ -308,7 +340,8 @@ const uk: Dict = {
   search: 'Пошук гравця…',
   minBattles: 'Мін. боїв',
   columns: 'Колонки',
-  playersN: 'Гравців: {n}',
+  playersN: { one: '{n} гравець', few: '{n} гравці', many: '{n} гравців', other: '{n} гравця' },
+  battlesN: { one: '{n} бій', few: '{n} бої', many: '{n} боїв', other: '{n} бою' },
   noPlayers: 'Гравців не знайдено',
 
   colRank: '#',
@@ -338,6 +371,12 @@ const uk: Dict = {
   colXp: 'Досвід',
   colClasses: 'ТТ/СТ/ЛТ/ПТ',
   colId: 'ID акаунта',
+  colClan: 'Клан',
+  colWins: 'Перемоги',
+  clsHT: 'ТТ',
+  clsMT: 'СТ',
+  clsLT: 'ЛТ',
+  clsTD: 'ПТ',
 
   battleDate: 'Дата',
   battleMap: 'Мапа',
@@ -359,7 +398,7 @@ const uk: Dict = {
     'За замовчуванням «наша команда» — це команда того, хто записав реплей. Якщо реплеї від різних гравців (або від суперника), впиши сюди своїх гравців — по одному ніку в рядку — або клан-тег у дужках, як [CLAN]. Тоді кожен бій віднесеться до команди, де більше гравців зі складу.',
   rosterPh: 'nickname_1\nnickname_2\n[CLAN]',
   rosterImport: 'Імпорт з Excel / CSV / TXT',
-  rosterImported: 'Імпортовано імен: {n}',
+  rosterImported: { one: 'Імпортовано {n} нік', few: 'Імпортовано {n} ніки', many: 'Імпортовано {n} ніків', other: 'Імпортовано {n} ніка' },
   rosterSaved: 'Склад збережено',
   rosterClear: 'Очистити',
   save: 'Зберегти',
@@ -381,7 +420,12 @@ const uk: Dict = {
   shareOpen: 'Відкрити',
   shareTrimmed: 'Сесія велика, тож список боїв не включено, щоб посилання влізло в Discord. Підсумки й рейтинги — повні.',
   shareTrimmedTanks: 'Також не включено результати по кожному танку; танки й кількість боїв на них збережено.',
-  shareTrimmedPlayers: 'Не включено гравців з одним боєм: {n}. Підсумки й середні команд їх усе одно враховують.',
+  shareTrimmedPlayers: {
+    one: 'Не включено {n} гравця з одним боєм. Підсумки й середні команд його все одно враховують.',
+    few: 'Не включено {n} гравців з одним боєм. Підсумки й середні команд їх усе одно враховують.',
+    many: 'Не включено {n} гравців з одним боєм. Підсумки й середні команд їх усе одно враховують.',
+    other: 'Не включено {n} гравця з одним боєм. Підсумки й середні команд їх усе одно враховують.',
+  },
   battlesOmitted: 'Список боїв не включено в це посилання, щоб воно було коротким. Рахунок і вся статистика гравців — повні.',
   shareTooLong: 'Посилання має {n} символів — більше за ліміт Discord без Nitro (2000). Telegram та більшість інших чатів приймуть.',
   exportDone: 'Excel-файл збережено',
@@ -474,8 +518,20 @@ export function useLang(): Lang {
 
 export type T = (key: Key, vars?: Record<string, string | number>) => string
 
+export const dictionaries: Readonly<Record<Lang, Dict>> = dicts
+
+const pluralRules = new Map<Lang, Intl.PluralRules>()
+
 export function translate(lang: Lang, key: Key, vars?: Record<string, string | number>): string {
-  let s = dicts[lang][key] ?? en[key]
+  const entry: string | Plural = dicts[lang][key] ?? en[key]
+  let s: string
+  if (typeof entry === 'string') s = entry
+  else {
+    let rules = pluralRules.get(lang)
+    if (!rules) pluralRules.set(lang, (rules = new Intl.PluralRules(lang)))
+    const form = rules.select(Number(vars?.n ?? 0)) as keyof Plural
+    s = entry[form] ?? entry.other
+  }
   if (vars) for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v))
   return s
 }
