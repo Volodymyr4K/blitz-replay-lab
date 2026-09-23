@@ -4,6 +4,7 @@ import { bprTier } from './analysis/bpr'
 import { decodeReport, type SharedReport } from './analysis/share'
 import { setLang, useLang, useT, type Lang, type T } from './i18n'
 import { date } from './lib/format'
+import { errorText } from './lib/labels'
 import { useToasts } from './lib/toast'
 import { useStore } from './store'
 import { Panel } from './ui/bits'
@@ -139,7 +140,7 @@ function Landing({ t }: { t: T }) {
           <ul className="error-list">
             {session.errors.map((e, i) => (
               <li key={i}>
-                <b>{e.file}</b> — {e.reason}
+                <b>{e.file}</b> — {errorText(e.reason, t)}
               </li>
             ))}
           </ul>

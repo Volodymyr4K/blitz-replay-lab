@@ -169,6 +169,10 @@ const en = {
 
   errorsTitle: 'Files that could not be read',
   unknownError: 'unknown error',
+  errNotReplay: 'not a WoT Blitz replay (or the file is damaged)',
+  errNoResults: 'no battle results — the replay was saved before the battle ended. Stay until the results screen next time.',
+  errTooLarge: 'file is too large to be a replay',
+  errCorrupt: 'replay is damaged or uses an unknown format',
 
   guideTitle: 'BPR 2.0 — how the rating works',
   guideIntro:
@@ -367,6 +371,10 @@ const uk: Dict = {
 
   errorsTitle: 'Файли, які не вдалося прочитати',
   unknownError: 'невідома помилка',
+  errNotReplay: 'це не реплей WoT Blitz (або файл пошкоджений)',
+  errNoResults: 'немає результатів бою — реплей збережено до кінця бою. Наступного разу дочекайся екрана результатів.',
+  errTooLarge: 'файл завеликий для реплею',
+  errCorrupt: 'реплей пошкоджений або має невідомий формат',
 
   guideTitle: 'BPR 2.0 — як рахується рейтинг',
   guideIntro:

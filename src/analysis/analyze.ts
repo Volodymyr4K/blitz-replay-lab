@@ -104,9 +104,11 @@ function inRoster(roster: Set<string>, nick: string, clan: string | null): boole
 
 export function resolveOurTeam(b: ParsedReplay, roster: Set<string>): { team: number; via: 'roster' | 'author' } {
   if (roster.size) {
+    // Only players who actually fought count — training rooms also list benched players and spectators.
+    const played = new Set(b.results.map((r) => r.accountId))
     const counts = new Map<number, number>()
     for (const p of b.players) {
-      if (inRoster(roster, p.nickname, p.clanTag)) counts.set(p.team, (counts.get(p.team) ?? 0) + 1)
+      if (played.has(p.accountId) && inRoster(roster, p.nickname, p.clanTag)) counts.set(p.team, (counts.get(p.team) ?? 0) + 1)
     }
     const ranked = [...counts].sort((a, z) => z[1] - a[1])
     if (ranked.length && (ranked.length === 1 || ranked[0][1] > ranked[1][1])) {

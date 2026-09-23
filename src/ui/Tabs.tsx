@@ -6,7 +6,7 @@ import { readRoster } from '../lib/excel'
 import { date, duration, int } from '../lib/format'
 import { toast } from '../lib/toast'
 import { removeBattle, updateSession, type FileError } from '../store'
-import { roomLabel } from '../lib/room'
+import { errorText, roomLabel } from '../lib/labels'
 import { OutcomeTag, Panel } from './bits'
 
 export function BattlesTab({ battles, errors, t, editable }: { battles: BattleSummary[]; errors: FileError[]; t: T; editable: boolean }) {
@@ -84,7 +84,7 @@ export function BattlesTab({ battles, errors, t, editable }: { battles: BattleSu
           <ul className="error-list">
             {errors.map((e, i) => (
               <li key={i}>
-                <b>{e.file}</b> — {e.reason || t('unknownError')}
+                <b>{e.file}</b> — {errorText(e.reason, t)}
               </li>
             ))}
           </ul>

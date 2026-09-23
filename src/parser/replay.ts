@@ -9,6 +9,22 @@ import { unzipSync } from 'fflate'
 import { unpickle } from './pickle'
 import { ProtoMessage } from './protobuf'
 
+export type ReplayErrorCode = 'not_replay' | 'no_results' | 'too_large' | 'corrupt'
+
+/** Parse failure with a stable code the UI can translate. */
+export class ReplayError extends Error {
+  readonly code: ReplayErrorCode
+
+  constructor(code: ReplayErrorCode, detail?: string) {
+    super(detail ? `${code}: ${detail}` : code)
+    this.code = code
+  }
+}
+
+/** Real `battle_results.dat` is ~50 KB and a replay ~1–2 MB; anything far larger is not a replay. */
+export const MAX_REPLAY_BYTES = 64 * 1024 * 1024
+const MAX_ENTRY_BYTES = 8 * 1024 * 1024
+
 export interface ReplayMeta {
   version: string | null
   playerName: string | null
@@ -59,27 +75,43 @@ export interface ParsedReplay {
 }
 
 export function parseReplay(file: Uint8Array): ParsedReplay {
+  if (file.length > MAX_REPLAY_BYTES) throw new ReplayError('too_large')
+
   let entries: Record<string, Uint8Array>
+  let oversized = false
   try {
     entries = unzipSync(file, {
-      filter: (f) => f.name === 'battle_results.dat' || f.name === 'meta.json',
+      filter: (f) => {
+        const wanted = f.name === 'battle_results.dat' || f.name === 'meta.json'
+        if (wanted && f.originalSize > MAX_ENTRY_BYTES) oversized = true
+        return wanted && !oversized
+      },
     })
   } catch {
-    throw new Error('not a valid replay archive')
+    throw new ReplayError('not_replay')
   }
+  if (oversized) throw new ReplayError('too_large')
 
   const dat = entries['battle_results.dat']
-  if (!dat) throw new Error('battle_results.dat missing (unfinished battle?)')
+  if (!dat) throw new ReplayError(entries['meta.json'] ? 'no_results' : 'not_replay')
 
+  try {
+    return readBattleResults(dat, entries['meta.json'])
+  } catch (err) {
+    throw err instanceof ReplayError ? err : new ReplayError('corrupt', err instanceof Error ? err.message : String(err))
+  }
+}
+
+function readBattleResults(dat: Uint8Array, metaJson: Uint8Array | undefined): ParsedReplay {
   const root = unpickle(dat)
   if (!Array.isArray(root) || root.length < 2 || !(root[1] instanceof Uint8Array)) {
-    throw new Error('unexpected battle_results.dat layout')
+    throw new ReplayError('corrupt', 'unexpected battle_results.dat layout')
   }
   const arenaId = String(root[0])
   const br = new ProtoMessage(root[1])
 
   const author = br.message(8)
-  if (!author) throw new Error('battle results have no author')
+  if (!author) throw new ReplayError('corrupt', 'battle results have no author')
 
   const players: ReplayPlayer[] = br.messages(201).flatMap((p) => {
     const info = p.message(2)
@@ -132,7 +164,7 @@ export function parseReplay(file: Uint8Array): ParsedReplay {
     authorTeam: author.uint(102),
     players,
     results,
-    meta: readMeta(entries['meta.json']),
+    meta: readMeta(metaJson),
   }
 }
 
