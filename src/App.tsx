@@ -10,16 +10,19 @@ import { useStore } from './store'
 import { Panel } from './ui/bits'
 import { Dropzone } from './ui/Dropzone'
 import { ErrorBoundary } from './ui/ErrorBoundary'
+import { ArchivePage } from './ui/ArchivePage'
+import { useArchive } from './archive'
 import { TrimNotes, Workspace } from './ui/Workspace'
 
 const APP_NAME = 'Blitz Replay Lab'
 const REPO_URL = 'https://github.com/Volodymyr4K/blitz-replay-lab'
 
-type Route = { page: 'home' } | { page: 'guide' } | { page: 'privacy' } | { page: 'shared'; payload: string }
+type Route = { page: 'home' } | { page: 'archive' } | { page: 'guide' } | { page: 'privacy' } | { page: 'shared'; payload: string }
 
 function parseRoute(hash: string): Route {
   const h = hash.replace(/^#\/?/, '')
   if (h.startsWith('s/')) return { page: 'shared', payload: h.slice(2) }
+  if (h === 'archive') return { page: 'archive' }
   if (h === 'bpr') return { page: 'guide' }
   if (h === 'privacy') return { page: 'privacy' }
   return { page: 'home' }
@@ -44,6 +47,7 @@ export default function App() {
   const route = useRoute()
   const { progress, saveFailed, session, loaded } = useStore()
   useDocumentTitle(route, session.title, t)
+  const archiveCount = useArchive().index.length
 
   return (
     <div className="app">
@@ -56,8 +60,12 @@ export default function App() {
           </span>
         </a>
         <nav className="nav">
-          <a href="#/" className={route.page === 'home' ? 'on' : ''}>
+          <a href="#/" className={`nav-home${route.page === 'home' ? ' on' : ''}`}>
             {t('navAnalyzer')}
+          </a>
+          <a href="#/archive" className={route.page === 'archive' ? 'on' : ''}>
+            {t('navArchive')}
+            {archiveCount > 0 && <span className="count">{archiveCount}</span>}
           </a>
           <a href="#/bpr" className={route.page === 'guide' ? 'on' : ''}>
             {t('navGuide')}
@@ -82,6 +90,7 @@ export default function App() {
         <ErrorBoundary key={route.page}>
           {route.page === 'home' && loaded && <Home t={t} />}
           {route.page === 'shared' && <Shared payload={route.payload} t={t} />}
+          {route.page === 'archive' && <ArchivePage t={t} />}
           {route.page === 'guide' && <Guide t={t} />}
           {route.page === 'privacy' && <Privacy t={t} />}
         </ErrorBoundary>
@@ -119,6 +128,7 @@ function useDocumentTitle(route: Route, sessionTitle: string, t: T) {
   useEffect(() => {
     let page = ''
     if (route.page === 'home') page = sessionTitle
+    else if (route.page === 'archive') page = t('archiveTitle')
     else if (route.page === 'guide') page = t('navGuide')
     else if (route.page === 'privacy') page = t('navPrivacy')
     else {

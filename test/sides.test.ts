@@ -1,30 +1,7 @@
 // Side assignment across a session where replays come from different people.
 import { describe, expect, it } from 'vitest'
-import { analyze, mvp, type StoredBattle } from '../src/analysis/analyze'
-import type { ReplayPlayerResult } from '../src/parser/replay'
-
-const CLAN_A = [1, 2, 3, 4, 5, 6, 7]
-const CLAN_B = [11, 12, 13, 14, 15, 16, 17]
-
-function result(accountId: number, damage = 1000): ReplayPlayerResult {
-  return {
-    accountId, tankId: 1, damageDealt: damage, damageAssisted: 0, damageBlocked: 0, shots: 5, hits: 4, penetrations: 3,
-    enemiesDamaged: 2, enemiesDestroyed: 1, hitsReceived: 0, penetrationsReceived: 0, victoryPointsEarned: 0,
-    victoryPointsSeized: 0, baseXp: 0, rating: null,
-  }
-}
-
-/** A 7v7 battle; `a`/`b` are the account IDs fighting for team 1/2. */
-function battle(id: string, a: number[], b: number[], winner: 1 | 2, author: number, extra: Partial<Record<number, number>> = {}): StoredBattle {
-  const team = (acc: number) => (a.includes(acc) ? 1 : 2)
-  return {
-    arenaId: id, fileName: `${id}.wotbreplay`, timestamp: Number(id), mapId: 1, winnerTeam: winner, roomType: 2,
-    authorId: author, authorTeam: team(author),
-    players: [...a, ...b].map((acc) => ({ accountId: acc, nickname: `p${acc}`, team: team(acc), clanTag: acc < 10 ? 'AAA' : 'BBB', platoonId: null })),
-    results: [...a, ...b].map((acc) => result(acc, extra[acc] ?? 1000)),
-    meta: { version: null, playerName: null, mapName: null, battleDuration: null, arenaBonusType: 2 },
-  }
-}
+import { analyze, mvp } from '../src/analysis/analyze'
+import { battle, CLAN_A, CLAN_B } from './helpers'
 
 describe('side assignment', () => {
   it('keeps sides stable when the enemy recorded some replays', () => {

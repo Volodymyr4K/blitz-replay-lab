@@ -15,6 +15,8 @@ export interface Session {
   mode: Mode
   roster: string[]
   title: string
+  /** Archive entry this session was saved as / opened from; saving again updates it. */
+  archiveId: string | null
 }
 
 export interface Progress {
@@ -34,7 +36,7 @@ interface State {
 const LEGACY_KEY = 'bra:session:v1'
 const DB_KEY = 'session'
 const MAX_ERRORS = 200
-const EMPTY: Session = { battles: [], errors: [], mode: 'scrim', roster: [], title: '' }
+const EMPTY: Session = { battles: [], errors: [], mode: 'scrim', roster: [], title: '', archiveId: null }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
 const isNum = (v: unknown) => typeof v === 'number' && Number.isFinite(v)
@@ -78,6 +80,7 @@ export function sanitizeSession(s: unknown): Session {
     mode: s.mode === 'individual' ? 'individual' : 'scrim',
     roster: Array.isArray(s.roster) ? s.roster.filter(isStr) : [],
     title: isStr(s.title) ? s.title : '',
+    archiveId: isStr(s.archiveId) ? s.archiveId : null,
   }
 }
 
@@ -201,13 +204,16 @@ export function useStore(): State {
 /** Clear loaded battles; returns what was there so the caller can offer an undo. */
 export function clearSession(): Session {
   const previous = state.session
-  updateSession({ battles: [], errors: [], title: '' })
+  updateSession({ battles: [], errors: [], title: '', archiveId: null })
   return previous
 }
 
 export function restoreSession(previous: Session) {
   updateSession(previous)
 }
+
+/** Current working session, for actions outside React (archiving). */
+export const getSession = () => state.session
 
 export function removeBattle(id: string) {
   updateSession({ battles: state.session.battles.filter((b) => b.arenaId !== id) })

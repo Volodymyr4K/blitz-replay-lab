@@ -6,7 +6,8 @@ import type { T } from '../i18n'
 import { exportExcel } from '../lib/excel'
 import { fixed, int, pct } from '../lib/format'
 import { toast } from '../lib/toast'
-import { clearSession, restoreSession, updateSession, type FileError } from '../store'
+import { updateSession, type FileError } from '../store'
+import { archiveAndClear, archiveCurrent } from './archiveActions'
 import { Bpr, Clan, Panel } from './bits'
 import { BprTrend, ClassMix, CompareRow, TopPlayers } from './charts'
 import { Dropzone } from './Dropzone'
@@ -108,13 +109,10 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
             >
               {t('exportXlsx')}
             </button>
-            <button
-              className="btn ghost"
-              onClick={() => {
-                const previous = clearSession()
-                toast(t('clearedSession'), 'info', { label: t('undo'), run: () => restoreSession(previous) })
-              }}
-            >
+            <button className="btn" onClick={() => archiveCurrent(t)}>
+              {t('archiveSave')}
+            </button>
+            <button className="btn ghost" onClick={() => archiveAndClear(t)}>
               {t('newAnalysis')}
             </button>
           </div>

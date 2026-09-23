@@ -125,3 +125,45 @@ test('layout never scrolls sideways', async ({ page }) => {
     expect(overflow, `horizontal overflow on ${tab}`).toBeLessThanOrEqual(0)
   }
 })
+
+test('archive keeps sessions, reopens them and backs them up', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('./')
+
+  // Session 1 goes to the archive automatically on "New analysis".
+  await upload(page, [SCRIM])
+  await page.getByRole('button', { name: 'New analysis' }).click()
+  await expect(page.getByText('Session saved to the archive and cleared')).toBeVisible()
+
+  // Session 2 is saved explicitly with a title.
+  await upload(page, RANDOMS)
+  await page.locator('.title-input').fill('Evening randoms')
+  await page.getByRole('button', { name: 'Save to archive' }).click()
+  await expect(page.getByText('Saved to archive')).toBeVisible()
+
+  await page.getByRole('link', { name: /Archive/ }).click()
+  const items = page.locator('.archive-list li')
+  await expect(items).toHaveCount(2)
+  await expect(items.filter({ hasText: 'Evening randoms' })).toContainText('open now')
+
+  // Opening session 1 swaps it into the workspace.
+  await items.filter({ hasNotText: 'Evening randoms' }).getByRole('button', { name: 'Open' }).click()
+  await expect(page.locator('.stat-strip')).toContainText('1–0–0')
+
+  // Player form across both sessions.
+  await page.getByRole('link', { name: /Archive/ }).click()
+  await page.getByRole('tab', { name: 'Player form' }).click()
+  await expect(page.locator('.archive .grid tbody tr').first()).toBeVisible()
+
+  // Backup: export, wipe, import.
+  await page.getByRole('tab', { name: /Sessions/ }).click()
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export backup' }).click()])
+  const backup = readFileSync(await download.path())
+  for (let i = 0; i < 2; i++) await items.first().getByRole('button', { name: 'Delete' }).click()
+  await expect(items).toHaveCount(0)
+  await page.locator('.archive input[type=file]').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: backup })
+  await expect(page.getByText('Imported 2 sessions')).toBeVisible()
+  await expect(items).toHaveCount(2)
+
+  expect(errors).toEqual([])
+})

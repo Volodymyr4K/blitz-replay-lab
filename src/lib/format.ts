@@ -17,6 +17,16 @@ export function date(ts: number, lang: Lang) {
   })
 }
 
+export function day(ts: number, lang: Lang) {
+  if (!ts) return '—'
+  const d = new Date(ts * 1000)
+  return d.toLocaleDateString(lang === 'uk' ? 'uk-UA' : 'en-GB', {
+    day: 'numeric',
+    month: 'short',
+    ...(d.getFullYear() !== new Date().getFullYear() && { year: 'numeric' }),
+  })
+}
+
 export function duration(sec: number | null) {
   if (sec === null) return '—'
   const s = Math.round(sec)
