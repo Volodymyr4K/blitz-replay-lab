@@ -9,7 +9,7 @@ import { useToasts } from './lib/toast'
 import { useStore } from './store'
 import { Panel } from './ui/bits'
 import { Dropzone } from './ui/Dropzone'
-import { Workspace } from './ui/Workspace'
+import { TrimNotes, Workspace } from './ui/Workspace'
 
 const APP_NAME = 'Blitz Replay Lab'
 const REPO_URL = 'https://github.com/Volodymyr4K/blitz-replay-lab'
@@ -193,6 +193,7 @@ function Shared({ payload, t }: { payload: string; t: T }) {
           <span className="eyebrow">{t('sharedBanner')}</span>
           <h1>{report.title || APP_NAME}</h1>
           <span className="muted small">{t('sharedCreated', { date: date(report.createdAt / 1000, lang) })}</span>
+          <TrimNotes omitted={report.analysis.omitted} t={t} />
         </div>
         <a className="btn" href="#/">
           {t('sharedOwn')}

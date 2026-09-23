@@ -9,8 +9,28 @@ import { removeBattle, updateSession, type FileError } from '../store'
 import { errorText, roomLabel } from '../lib/labels'
 import { OutcomeTag, Panel } from './bits'
 
-export function BattlesTab({ battles, errors, t, editable }: { battles: BattleSummary[]; errors: FileError[]; t: T; editable: boolean }) {
+export function BattlesTab({
+  battles,
+  errors,
+  t,
+  editable,
+  omitted,
+}: {
+  battles: BattleSummary[]
+  errors: FileError[]
+  t: T
+  editable: boolean
+  /** A shared link dropped the battle list to stay short. */
+  omitted: boolean
+}) {
   const lang = useLang()
+  if (omitted) {
+    return (
+      <Panel>
+        <p className="muted prose">{t('battlesOmitted')}</p>
+      </Panel>
+    )
+  }
   const maps = new Map<string, { w: number; n: number }>()
   for (const b of battles) {
     const name = mapName(b.mapId, b.mapCode, lang)

@@ -18,6 +18,8 @@ export function tankInfo(id: number): TankInfo {
   return { name: t[0], type: t[1], tier: t[2] }
 }
 
+export const knownMap = (id: number) => id in mapTable
+
 export function mapName(id: number, code: string | null, lang: 'en' | 'uk'): string {
   const m = mapTable[id]
   if (m) return m[lang] || m.en

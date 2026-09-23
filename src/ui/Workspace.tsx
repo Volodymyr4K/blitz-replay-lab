@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { focusPlayer, mvp, playerBattles, toRow, type Analysis, type PlayerRow, type PlayerSums, type StoredBattle } from '../analysis/analyze'
-import { encodeReport, type Mode } from '../analysis/share'
+import { focusPlayer, mvp, playerBattles, type Analysis, type PlayerRow, type StoredBattle } from '../analysis/analyze'
+import { decodeReport, encodeReport, type Mode } from '../analysis/share'
 import { tankInfo } from '../data/lookup'
 import type { T } from '../i18n'
 import { exportExcel } from '../lib/excel'
@@ -25,15 +25,6 @@ interface Props {
   local?: { battles: StoredBattle[]; errors: FileError[]; roster: string[] }
 }
 
-/** Merge a team's raw sums into one pseudo-player so accuracy etc. are computed from totals. */
-function teamTotals(rows: PlayerRow[]): PlayerRow {
-  const s: PlayerSums = { id: 0, nick: '', clan: null, side: 'our', battles: 0, wins: 0, damage: 0, frags: 0, shots: 0, hits: 0, pens: 0, assist: 0, blocked: 0, enemiesDamaged: 0, iPoints: 0, sPoints: 0, hitsReceived: 0, xp: 0, tanks: {} }
-  for (const r of rows) {
-    for (const k of ['battles', 'wins', 'damage', 'frags', 'shots', 'hits', 'pens', 'assist', 'blocked', 'enemiesDamaged', 'iPoints', 'sPoints', 'hitsReceived', 'xp'] as const) s[k] += r[k]
-  }
-  return toRow(s)
-}
-
 function buildSummary(a: Analysis, mode: Mode, t: T): string[] {
   const lines: string[] = []
   const total = a.record.win + a.record.loss + a.record.draw
@@ -45,7 +36,7 @@ function buildSummary(a: Analysis, mode: Mode, t: T): string[] {
   } else {
     const diff = a.ourAvgBpr - a.enemyAvgBpr
     lines.push(diff >= 0 ? t('sumEdge', { v: fixed(diff) }) : t('sumGap', { v: fixed(-diff) }))
-    const dmg = a.ourAvgAdr - a.enemyAvgAdr
+    const dmg = a.ourTotal.adr - a.enemyTotal.adr
     lines.push(dmg >= 0 ? t('sumDmgAhead', { v: int(dmg) }) : t('sumDmgBehind', { v: int(-dmg) }))
     const best = mvp(a)
     if (best) lines.push(t('sumMvp', { nick: best.nick, bpr: fixed(best.bpr), adr: int(best.adr), tank: best.mainTank }))
@@ -60,8 +51,8 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
   const [open, setOpen] = useState<PlayerRow | null>(null)
   const total = a.record.win + a.record.loss + a.record.draw
   const summary = useMemo(() => buildSummary(a, mode, t), [a, mode, t])
-  const ourT = useMemo(() => teamTotals(a.our), [a.our])
-  const enemyT = useMemo(() => teamTotals(a.enemy), [a.enemy])
+  const ourT = a.ourTotal
+  const enemyT = a.enemyTotal
   const all = useMemo(() => [...a.our, ...a.enemy].sort((x, y) => y.bpr - x.bpr), [a])
   const focus = focusPlayer(a)
   const best = mvp(a)
@@ -69,10 +60,11 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
   const modalBattles = open && local ? playerBattles(local.battles, open.id, open.side, opts) : null
   const focusBattles = mode === 'individual' && focus && local ? playerBattles(local.battles, focus.id, 'our', opts) : null
 
-  const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const [shared, setShared] = useState<{ url: string; omitted: Analysis['omitted'] } | null>(null)
   const share = async () => {
-    const url = `${location.origin}${location.pathname}#/s/${encodeReport(a, mode, title)}`
-    setShareUrl(url)
+    const payload = encodeReport(a, mode, title)
+    const url = `${location.origin}${location.pathname}#/s/${payload}`
+    setShared({ url, omitted: decodeReport(payload).analysis.omitted })
     try {
       await navigator.clipboard.writeText(url)
       toast(t('shareCopied'))
@@ -85,7 +77,7 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
     ['overview', t('tabOverview')],
     ['our', t('tabOur'), a.our.length],
     ['enemy', t('tabEnemy'), a.enemy.length],
-    ['battles', t('tabBattles'), a.battles.length],
+    ['battles', t('tabBattles'), total],
   ]
   if (local) tabs.push(['roster', t('tabRoster'), local.roster.length || undefined])
 
@@ -187,7 +179,7 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
                     <div key={id} className="tank-line">
                       <span>{tankInfo(Number(id)).name}</span>
                       <span className="muted">
-                        {s.battles}× · {int(s.damage / s.battles)} · {pct(s.wins / s.battles)}
+                        {a.omitted?.tankDetail ? `${s.battles}×` : `${s.battles}× · ${int(s.damage / s.battles)} · ${pct(s.wins / s.battles)}`}
                       </span>
                     </div>
                   ))}
@@ -217,7 +209,7 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
               <TopPlayers rows={all} onOpen={setOpen} />
             </Panel>
             <Panel title={t('classMix')}>
-              <ClassMix our={a.our} enemy={a.enemy} t={t} />
+              <ClassMix our={ourT} enemy={enemyT} t={t} />
             </Panel>
             <Panel
               title={t('summary')}
@@ -245,16 +237,16 @@ export function Workspace({ analysis: a, mode, title, t, local }: Props) {
 
       {tab === 'our' && <TeamTable rows={a.our} t={t} onOpen={setOpen} />}
       {tab === 'enemy' && <TeamTable rows={a.enemy} t={t} onOpen={setOpen} />}
-      {tab === 'battles' && <BattlesTab battles={a.battles} errors={local?.errors ?? []} t={t} editable={!!local} />}
+      {tab === 'battles' && <BattlesTab battles={a.battles} errors={local?.errors ?? []} t={t} editable={!!local} omitted={!!a.omitted?.battles} />}
       {tab === 'roster' && local && <RosterTab roster={local.roster} t={t} />}
 
-      {open && <PlayerModal row={open} battles={modalBattles} t={t} onClose={() => setOpen(null)} />}
-      {shareUrl && <ShareDialog url={shareUrl} t={t} onClose={() => setShareUrl(null)} />}
+      {open && <PlayerModal row={open} battles={modalBattles} tankDetail={!a.omitted?.tankDetail} t={t} onClose={() => setOpen(null)} />}
+      {shared && <ShareDialog url={shared.url} omitted={shared.omitted} t={t} onClose={() => setShared(null)} />}
     </div>
   )
 }
 
-function ShareDialog({ url, t, onClose }: { url: string; t: T; onClose: () => void }) {
+function ShareDialog({ url, omitted, t, onClose }: { url: string; omitted: Analysis['omitted']; t: T; onClose: () => void }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal share-dialog" role="dialog" aria-modal="true" aria-label={t('share')} onClick={(e) => e.stopPropagation()}>
@@ -269,7 +261,8 @@ function ShareDialog({ url, t, onClose }: { url: string; t: T; onClose: () => vo
         </header>
         <div className="modal-body">
           <textarea className="input share-url" readOnly rows={3} value={url} onFocus={(e) => e.currentTarget.select()} />
-          {url.length > 6000 && <p className="muted small">{t('shareTooLong', { n: url.length })}</p>}
+          <TrimNotes omitted={omitted} t={t} />
+          {url.length > 2000 && <p className="muted small">{t('shareTooLong', { n: url.length })}</p>}
           <div className="row-actions">
             <button
               className="btn primary"
@@ -287,6 +280,15 @@ function ShareDialog({ url, t, onClose }: { url: string; t: T; onClose: () => vo
         </div>
       </div>
     </div>
+  )
+}
+
+export function TrimNotes({ omitted, t }: { omitted: Analysis['omitted']; t: T }) {
+  if (!omitted?.battles) return null
+  return (
+    <p className="muted small">
+      {t('shareTrimmed')} {omitted.tankDetail && t('shareTrimmedTanks')} {omitted.players > 0 && t('shareTrimmedPlayers', { n: omitted.players })}
+    </p>
   )
 }
 

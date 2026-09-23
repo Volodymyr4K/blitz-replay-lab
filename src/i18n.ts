@@ -159,7 +159,11 @@ const en = {
   shareTitle: 'Share this report',
   shareText: 'The whole report is packed into the link — no account, no expiry. Anyone with it can view the stats.',
   shareOpen: 'Open',
-  shareTooLong: 'Link is long ({n} chars); some chats may cut it.',
+  shareTrimmed: 'The session is large, so the battle-by-battle list was left out to keep the link short enough for Discord. Totals and ratings are complete.',
+  shareTrimmedTanks: 'Per-tank results were left out too; tanks and battle counts are kept.',
+  shareTrimmedPlayers: '{n} player(s) with a single battle were left out; team totals and averages still include them.',
+  battlesOmitted: 'The battle list was left out of this link to keep it short. The record and all player stats are complete.',
+  shareTooLong: 'Link is {n} characters — over Discord’s 2000 limit without Nitro. Telegram and most other chats are fine.',
   exportDone: 'Excel file saved',
 
   roomRegular: 'Regular',
@@ -197,7 +201,7 @@ const en = {
   privacyBody2:
     'The current session (parsed battle results, roster, language) is kept in your browser’s local storage so it survives a reload. “New analysis” deletes it.',
   privacyBody3:
-    'Share links contain the aggregated report itself (nicknames and stats), compressed into the URL. Anyone with the link can read it.',
+    'Share links contain the aggregated report itself (nicknames, account IDs and stats), compressed into the URL. Anyone with the link can read it, and a link cannot be revoked. The site does not verify a shared report — treat it like a screenshot from whoever sent it.',
 
   footerCredit: 'Replay format research: eigenein/wotbreplay-parser. BPR 2.0: BlitzScrim. Not affiliated with Wargaming.',
 }
@@ -362,7 +366,11 @@ const uk: Dict = {
   shareTitle: 'Поділитися звітом',
   shareText: 'Весь звіт запакований у посилання — без акаунта і без терміну дії. Будь-хто з ним побачить статистику.',
   shareOpen: 'Відкрити',
-  shareTooLong: 'Посилання довге ({n} симв.), деякі чати можуть його обрізати.',
+  shareTrimmed: 'Сесія велика, тож список боїв не включено, щоб посилання влізло в Discord. Підсумки й рейтинги — повні.',
+  shareTrimmedTanks: 'Також не включено результати по кожному танку; танки й кількість боїв на них збережено.',
+  shareTrimmedPlayers: 'Не включено гравців з одним боєм: {n}. Підсумки й середні команд їх усе одно враховують.',
+  battlesOmitted: 'Список боїв не включено в це посилання, щоб воно було коротким. Рахунок і вся статистика гравців — повні.',
+  shareTooLong: 'Посилання має {n} символів — більше за ліміт Discord без Nitro (2000). Telegram та більшість інших чатів приймуть.',
   exportDone: 'Excel-файл збережено',
 
   roomRegular: 'Звичайний',
@@ -400,7 +408,7 @@ const uk: Dict = {
   privacyBody2:
     'Поточна сесія (розібрані результати боїв, склад, мова) зберігається в локальному сховищі браузера, щоб пережити перезавантаження. «Новий аналіз» її видаляє.',
   privacyBody3:
-    'Посилання для шерингу містить сам звіт (ніки і статистику), стиснутий в URL. Будь-хто з посиланням може його прочитати.',
+    'Посилання для шерингу містить сам звіт (ніки, ID акаунтів і статистику), стиснутий в URL. Будь-хто з посиланням може його прочитати, і відкликати посилання неможливо. Сайт не перевіряє дані в чужому звіті — сприймай його як скріншот від того, хто надіслав.',
 
   footerCredit: 'Формат реплеїв: eigenein/wotbreplay-parser. BPR 2.0: BlitzScrim. Не пов’язано з Wargaming.',
 }

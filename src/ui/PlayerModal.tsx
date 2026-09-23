@@ -7,7 +7,20 @@ import { mapName } from '../data/lookup'
 import { Bpr, Clan, Meter, OutcomeTag } from './bits'
 import { BprTrend } from './charts'
 
-export function PlayerModal({ row, battles, t, onClose }: { row: PlayerRow; battles: PlayerBattle[] | null; t: T; onClose: () => void }) {
+export function PlayerModal({
+  row,
+  battles,
+  tankDetail,
+  t,
+  onClose,
+}: {
+  row: PlayerRow
+  battles: PlayerBattle[] | null
+  /** False when a shared link dropped per-tank results to stay short. */
+  tankDetail: boolean
+  t: T
+  onClose: () => void
+}) {
   const lang = useLang()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -78,9 +91,13 @@ export function PlayerModal({ row, battles, t, onClose }: { row: PlayerRow; batt
               <tr>
                 <th className="left">{t('tank')}</th>
                 <th>{t('colBattles')}</th>
-                <th>{t('colWr')}</th>
-                <th>{t('colAdr')}</th>
-                <th>{t('colFrags')}</th>
+                {tankDetail && (
+                  <>
+                    <th>{t('colWr')}</th>
+                    <th>{t('colAdr')}</th>
+                    <th>{t('colFrags')}</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -91,9 +108,13 @@ export function PlayerModal({ row, battles, t, onClose }: { row: PlayerRow; batt
                     {tk.info.tier > 0 && <span className="muted"> · {roman(tk.info.tier)}</span>}
                   </td>
                   <td>{tk.battles}</td>
-                  <td>{pct(tk.wins / tk.battles)}</td>
-                  <td>{int(tk.damage / tk.battles)}</td>
-                  <td>{tk.frags}</td>
+                  {tankDetail && (
+                    <>
+                      <td>{pct(tk.wins / tk.battles)}</td>
+                      <td>{int(tk.damage / tk.battles)}</td>
+                      <td>{tk.frags}</td>
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>

@@ -21,12 +21,11 @@ export function CompareRow({ label, our, enemy, format, higherIsBetter = true }:
   )
 }
 
-export function ClassMix({ our, enemy, t }: { our: PlayerRow[]; enemy: PlayerRow[]; t: T }) {
-  const sum = (rows: PlayerRow[]) =>
-    rows.reduce((acc, r) => ({ HT: acc.HT + r.classes.HT, MT: acc.MT + r.classes.MT, LT: acc.LT + r.classes.LT, TD: acc.TD + r.classes.TD }), { HT: 0, MT: 0, LT: 0, TD: 0 })
+/** Class split per team, from each team's merged totals. */
+export function ClassMix({ our, enemy, t }: { our: PlayerRow; enemy: PlayerRow; t: T }) {
   const teams = [
-    { label: t('ourTeam'), mix: sum(our), side: 'our' },
-    { label: t('enemyTeam'), mix: sum(enemy), side: 'enemy' },
+    { label: t('ourTeam'), mix: our.classes, side: 'our' },
+    { label: t('enemyTeam'), mix: enemy.classes, side: 'enemy' },
   ]
   return (
     <div className="class-mix">

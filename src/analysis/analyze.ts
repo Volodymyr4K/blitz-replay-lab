@@ -36,10 +36,26 @@ export interface PlayerSums {
   iPoints: number
   /** Σ victory points seized */
   sPoints: number
-  hitsReceived: number
   xp: number
   tanks: Record<number, TankSums>
 }
+
+/** Numeric counters of PlayerSums, i.e. everything that simply adds up. */
+export const SUM_KEYS = [
+  'battles',
+  'wins',
+  'damage',
+  'frags',
+  'shots',
+  'hits',
+  'pens',
+  'assist',
+  'blocked',
+  'enemiesDamaged',
+  'iPoints',
+  'sPoints',
+  'xp',
+] as const satisfies readonly (keyof PlayerSums)[]
 
 export interface PlayerRow extends PlayerSums, BprResult {
   key: string
@@ -85,10 +101,23 @@ export interface Analysis {
   enemy: PlayerRow[]
   battles: BattleSummary[]
   record: Record<Outcome, number>
+  /** Battle-weighted mean of player BPR. */
   ourAvgBpr: number
   enemyAvgBpr: number
-  ourAvgAdr: number
-  enemyAvgAdr: number
+  /** Each team's sums merged into one pseudo-player: team ADR, accuracy, class mix… */
+  ourTotal: PlayerRow
+  enemyTotal: PlayerRow
+  /** Parts a shared link left out to stay short; absent for local sessions. */
+  omitted?: { battles: boolean; tankDetail: boolean; players: number }
+}
+
+/** Team-level numbers a shared link carries so they stay exact even when players are left out. */
+export interface TeamFacts {
+  record: Record<Outcome, number>
+  ourAvgBpr: number
+  enemyAvgBpr: number
+  ourTotal: PlayerRow
+  enemyTotal: PlayerRow
 }
 
 export interface AnalyzeOptions {
@@ -191,7 +220,6 @@ function emptySums(id: number, nick: string, clan: string | null, side: Side): P
     enemiesDamaged: 0,
     iPoints: 0,
     sPoints: 0,
-    hitsReceived: 0,
     xp: 0,
     tanks: {},
   }
@@ -210,7 +238,6 @@ export function addResult(s: PlayerSums, r: ReplayPlayerResult, won: boolean) {
   s.enemiesDamaged += r.enemiesDamaged
   s.iPoints += r.victoryPointsEarned - r.victoryPointsSeized
   s.sPoints += r.victoryPointsSeized
-  s.hitsReceived += r.hitsReceived
   s.xp += r.baseXp
   if (r.tankId) {
     const t = (s.tanks[r.tankId] ??= { battles: 0, wins: 0, damage: 0, frags: 0 })
@@ -286,19 +313,38 @@ function weightedMean(rows: PlayerRow[], pick: (r: PlayerRow) => number): number
   return total ? rows.reduce((acc, r) => acc + pick(r) * r.battles, 0) / total : 0
 }
 
-export function summarizeRows(our: PlayerRow[], enemy: PlayerRow[], battles: BattleSummary[], focusId: number | null = null): Analysis {
-  const record = { win: 0, loss: 0, draw: 0 }
-  for (const b of battles) record[b.outcome]++
+/** Merge a team's sums into one pseudo-player so accuracy etc. come from totals, not averages of averages. */
+export function teamTotal(rows: PlayerRow[], side: Side): PlayerRow {
+  const s = emptySums(0, '', null, side)
+  for (const r of rows) {
+    for (const k of SUM_KEYS) s[k] += r[k]
+    for (const [id, t] of Object.entries(r.tanks)) {
+      const m = (s.tanks[Number(id)] ??= { battles: 0, wins: 0, damage: 0, frags: 0 })
+      m.battles += t.battles
+      m.wins += t.wins
+      m.damage += t.damage
+      m.frags += t.frags
+    }
+  }
+  return toRow(s)
+}
+
+export function summarizeRows(our: PlayerRow[], enemy: PlayerRow[], battles: BattleSummary[], focusId: number | null = null, facts?: TeamFacts): Analysis {
+  let record = facts?.record
+  if (!record) {
+    record = { win: 0, loss: 0, draw: 0 }
+    for (const b of battles) record[b.outcome]++
+  }
   return {
     focusId,
     our: [...our].sort(byBpr),
     enemy: [...enemy].sort(byBpr),
     battles,
     record,
-    ourAvgBpr: weightedMean(our, (r) => r.bpr),
-    enemyAvgBpr: weightedMean(enemy, (r) => r.bpr),
-    ourAvgAdr: weightedMean(our, (r) => r.adr),
-    enemyAvgAdr: weightedMean(enemy, (r) => r.adr),
+    ourAvgBpr: facts?.ourAvgBpr ?? weightedMean(our, (r) => r.bpr),
+    enemyAvgBpr: facts?.enemyAvgBpr ?? weightedMean(enemy, (r) => r.bpr),
+    ourTotal: facts?.ourTotal ?? teamTotal(our, 'our'),
+    enemyTotal: facts?.enemyTotal ?? teamTotal(enemy, 'enemy'),
   }
 }
 

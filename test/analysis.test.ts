@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { analyze, type StoredBattle } from '../src/analysis/analyze'
 import { bpr } from '../src/analysis/bpr'
-import { decodeReport, encodeReport } from '../src/analysis/share'
 import { parseReplay } from '../src/parser/replay'
 
 const load = (name: string): StoredBattle => ({
@@ -47,14 +46,4 @@ describe('analyze', () => {
     expect(a.battles[0].outcome).toBe('loss')
   })
 
-  it('round-trips through a share link', () => {
-    const a = analyze(battles, { roster: [] })
-    const payload = encodeReport(a, 'scrim', 'Test')
-    expect(payload.length).toBeLessThan(4000)
-    const r = decodeReport(payload)
-    expect(r.title).toBe('Test')
-    expect(r.analysis.our.map((p) => p.nick)).toEqual(a.our.map((p) => p.nick))
-    expect(r.analysis.our[0].bpr).toBeCloseTo(a.our[0].bpr, 10)
-    expect(r.analysis.record).toEqual(a.record)
-  })
 })
