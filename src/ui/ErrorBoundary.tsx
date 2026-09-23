@@ -1,6 +1,6 @@
 import { Component, type ReactNode } from 'react'
 import { getLang, translate } from '../i18n'
-import { SESSION_KEY } from '../store'
+import { resetStorage } from '../store'
 
 interface State {
   error: Error | null
@@ -37,12 +37,8 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
             </button>
             <button
               className="btn"
-              onClick={() => {
-                try {
-                  localStorage.removeItem(SESSION_KEY)
-                } catch {
-                  /* storage unavailable */
-                }
+              onClick={async () => {
+                await resetStorage()
                 location.hash = '#/'
                 location.reload()
               }}

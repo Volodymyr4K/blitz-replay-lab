@@ -42,7 +42,7 @@ export default function App() {
   const t = useT()
   const lang = useLang()
   const route = useRoute()
-  const { progress, storageFull, session } = useStore()
+  const { progress, saveFailed, session, loaded } = useStore()
   useDocumentTitle(route, session.title, t)
 
   return (
@@ -75,12 +75,12 @@ export default function App() {
         )}
       </header>
 
-      {storageFull && <div className="banner warn">{t('storageFull')}</div>}
+      {saveFailed && <div className="banner warn">{t('storageFull')}</div>}
 
       <main className="main">
         {/* Keyed by page so navigating away from a crashed view recovers. */}
         <ErrorBoundary key={route.page}>
-          {route.page === 'home' && <Home t={t} />}
+          {route.page === 'home' && loaded && <Home t={t} />}
           {route.page === 'shared' && <Shared payload={route.payload} t={t} />}
           {route.page === 'guide' && <Guide t={t} />}
           {route.page === 'privacy' && <Privacy t={t} />}

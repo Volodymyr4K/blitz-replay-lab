@@ -40,7 +40,7 @@ const en = {
   dupN: '{n} duplicate(s) skipped',
   failedN: '{n} file(s) could not be read',
   notReplays: 'Only .wotbreplay files are supported',
-  storageFull: 'Browser storage is full — this session will not survive a reload.',
+  storageFull: 'Could not save the session in this browser (storage full or disabled) — it will be lost on reload. Share or export it to keep it.',
 
   statBattles: 'Battles',
   statRecord: 'Record',
@@ -208,7 +208,7 @@ const en = {
   privacyBody1:
     'Replays are read by JavaScript inside your browser. They are never uploaded — there is no server, database or analytics.',
   privacyBody2:
-    'The current session (parsed battle results, roster, language) is kept in your browser’s local storage so it survives a reload. “New analysis” deletes it.',
+    'The current session (parsed battle results, roster, language) is kept in your browser’s storage (IndexedDB) so it survives a reload and stays in sync across open tabs. “New analysis” deletes it. Browsers may clear site data after long inactivity (Safari: about 7 days), so share or export anything you want to keep.',
   privacyBody3:
     'Share links contain the aggregated report itself (nicknames, account IDs and stats), compressed into the URL. Anyone with the link can read it, and a link cannot be revoked. The site does not verify a shared report — treat it like a screenshot from whoever sent it.',
 
@@ -256,7 +256,7 @@ const uk: Dict = {
   dupN: 'Пропущено дублікатів: {n}',
   failedN: 'Не вдалося прочитати файлів: {n}',
   notReplays: 'Підтримуються лише файли .wotbreplay',
-  storageFull: 'Сховище браузера заповнене — після перезавантаження сесія не збережеться.',
+  storageFull: 'Не вдалося зберегти сесію в браузері (сховище заповнене або вимкнене) — після перезавантаження вона зникне. Щоб зберегти, поділись нею або експортуй.',
 
   statBattles: 'Боїв',
   statRecord: 'Рахунок',
@@ -424,7 +424,7 @@ const uk: Dict = {
   privacyBody1:
     'Реплеї читає JavaScript прямо у твоєму браузері. Вони нікуди не відправляються — тут немає сервера, бази даних чи аналітики.',
   privacyBody2:
-    'Поточна сесія (розібрані результати боїв, склад, мова) зберігається в локальному сховищі браузера, щоб пережити перезавантаження. «Новий аналіз» її видаляє.',
+    'Поточна сесія (розібрані результати боїв, склад, мова) зберігається в сховищі браузера (IndexedDB), щоб пережити перезавантаження, і синхронізується між відкритими вкладками. «Новий аналіз» її видаляє. Браузери можуть очищати дані сайтів після тривалої неактивності (Safari — приблизно через 7 днів), тож те, що хочеш зберегти, поширюй посиланням або експортуй.',
   privacyBody3:
     'Посилання для шерингу містить сам звіт (ніки, ID акаунтів і статистику), стиснутий в URL. Будь-хто з посиланням може його прочитати, і відкликати посилання неможливо. Сайт не перевіряє дані в чужому звіті — сприймай його як скріншот від того, хто надіслав.',
 
